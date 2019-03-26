@@ -2,6 +2,7 @@ CC=gcc
 CXX=g++
 RM=rm -f
 
+
 CPPFLAGS=-O3 -std=c++11 
 LDFLAGS=-O3 -std=c++11 
 LDLIBS=
@@ -30,8 +31,3 @@ PatternCodes.o: PatternCodes.cpp PatternCodes.h
 blockfinder: $(OBJS)
 	$(CXX) $(LDFLAGS) -o blockfinder $(OBJS) $(LDLIBS)
 
-test:
-	./test_ncs
-
-clean:
-	$(RM) $(OBJS) test_ncs
