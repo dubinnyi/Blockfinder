@@ -7,7 +7,7 @@ BlockFinder::BlockFinder( int bsamples, NCS bncs, int bmin_depth, bool bblock_fi
 	check_t_free = false; 
 	block_finder_mode = bblock_finder_mode;
 	depth = 0;  
-	string results_filename = ncs.name + "_" + to_string(samples) + "_" + to_string(min_depth) + "_cpp.txt";
+	string results_filename = ncs.name + "_" + to_string(samples) + "_" + to_string(min_depth) + "_cpp.elb";
 	result_ofstream.open(results_filename);
 	min_t_free = bmin_t_free;
 	index_of_type_T = index_of_type(labeltype('T', 1, 1, 0));

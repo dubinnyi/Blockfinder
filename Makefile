@@ -7,6 +7,8 @@ CPPFLAGS=-O3 -std=c++11
 LDFLAGS=-O3 -std=c++11 
 LDLIBS=
 
+PROGRAM=blockfinder_fast_1cpu
+
 SRCS=ncs.cpp \
      classes.cpp \
      blockfinder.cpp \
@@ -14,7 +16,8 @@ SRCS=ncs.cpp \
      blockfinder_main.cpp \
      PatternCodes.cpp
 OBJS=$(subst .cpp,.o,$(SRCS))
-all: blockfinder
+
+all: $(PROGRAM)
 
 ncs.o: ncs.cpp ncs.h
 
@@ -28,6 +31,6 @@ scheme.o: scheme.cpp scheme.h
 
 PatternCodes.o: PatternCodes.cpp PatternCodes.h
 
-blockfinder: $(OBJS)
-	$(CXX) $(LDFLAGS) -o blockfinder $(OBJS) $(LDLIBS)
+$(PROGRAM): $(OBJS)
+	$(CXX) $(LDFLAGS) -o $(PROGRAM) $(OBJS) $(LDLIBS)
 
