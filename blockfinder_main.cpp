@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
 			b_test.maincycle(t.counter_start, t.counter_end);
 
             ostringstream block_ofilename;
-            block_ofilename<< "NCD_"<<setw(3)<<setfill('0')<<numbertask<<"_cpp.elb";
+            block_ofilename<<ncs.name<<"_"<<setw(3)<<setfill('0')<<numbertask<<"_cpp.elb";
             //block_filename = block_ofilename.str();
 
             //blocks_file.open(block_filename);
