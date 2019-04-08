@@ -3,8 +3,8 @@ CXX=g++
 RM=rm -f
 
 
-CPPFLAGS=-O3 -std=c++11 
-LDFLAGS=-O3 -std=c++11 
+CPPFLAGS=-O2 -std=c++11 -g -pg 
+LDFLAGS=-O2 -std=c++11 -g -pg
 LDLIBS=
 
 PROGRAM=blockfinder_fast_1cpu
@@ -33,4 +33,7 @@ PatternCodes.o: PatternCodes.cpp PatternCodes.h
 
 $(PROGRAM): $(OBJS)
 	$(CXX) $(LDFLAGS) -o $(PROGRAM) $(OBJS) $(LDLIBS)
+
+clean:
+	$(RM) $(PROGRAM) $(OBJS)
 
