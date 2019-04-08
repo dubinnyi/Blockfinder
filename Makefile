@@ -2,9 +2,10 @@ CC=gcc
 CXX=g++
 RM=rm -f
 
+PROGRAMM=blockfinder_fast_parallel
 
-CPPFLAGS=-O3 -std=c++11 
-LDFLAGS=-O3 -std=c++11 
+CPPFLAGS=-O2 -std=c++11 -g -pg
+LDFLAGS=-O2 -std=c++11 -g -pg
 LDLIBS=
 
 SRCS=ncs.cpp \
@@ -17,7 +18,7 @@ SRCS=ncs.cpp \
 
 OBJS=$(subst .cpp,.o,$(SRCS))
 
-all: blockfinder
+all: $(PROGRAMM)
 
 ncs.o: ncs.cpp ncs.h
 
@@ -33,12 +34,12 @@ PatternCodes.o: PatternCodes.cpp PatternCodes.h
 
 tasks.o: tasks.cpp tasks.h
 
-blockfinder: $(OBJS)
-	$(CXX) $(LDFLAGS) -o blockfinder $(OBJS) $(LDLIBS)
+$(PROGRAMM): $(OBJS)
+	$(CXX) $(LDFLAGS) -o $(PROGRAMM) $(OBJS) $(LDLIBS)
 
 #test:
 #	./test_ncs
 
 clean:
-	$(RM) $(OBJS) blockfinder
+	$(RM) $(OBJS) $(PROGRAMM)
 
