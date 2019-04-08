@@ -19,8 +19,9 @@ public:
 	vector <string> patterns_list;
 	int depth;
 	int max_depth;
-	int parallel_depth=2;
-	int task_size=95;
+	int parallel_depth=1;
+	int task_size=100;
+	int task_id;
     vector <Task4run> tasks;
 	bool check_t_free;
 	string results_filename;

@@ -4,8 +4,8 @@ RM=rm -f
 
 PROGRAMM=blockfinder_fast_parallel
 
-CPPFLAGS=-O2 -std=c++11 -g -pg
-LDFLAGS=-O2 -std=c++11 -g -pg
+CPPFLAGS=-O0 -std=c++11 -g -pg
+LDFLAGS=-O0 -std=c++11 -g -pg
 LDLIBS=
 
 SRCS=ncs.cpp \

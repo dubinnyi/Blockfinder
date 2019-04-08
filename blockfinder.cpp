@@ -133,7 +133,7 @@ void BlockFinder::maincycle( vector <int> start, vector <int> end   ) {
 
 
     std::ofstream iterlog;          // поток для записи
-    iterlog.open("iterlog.txt");
+    iterlog.open("iterlog"+to_string(task_id)+".txt");
 
 
 
@@ -502,6 +502,7 @@ void BlockFinder::recoverfromcounters( vector <int> currentcounters, int numbert
 	counter=currentcounters;
 
 	ostringstream tmp;
+	task_id = numbertask;
 	tmp<<setw(4)<<setfill('0')<<numbertask;
 	result_ofstream.close();
         results_filename = ncs.name + "_"+to_string(samples)+"_"+to_string(min_depth)+"_"+tmp.str()+"_cpp.elb";
