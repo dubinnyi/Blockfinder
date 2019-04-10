@@ -3,8 +3,8 @@ CXX=g++
 RM=rm -f
 
 
-CPPFLAGS=-std=c++11 -O2 -pg  -I.
-LDFLAGS=-std=c++11 -O2 -g -pg  -pthread
+CPPFLAGS=-std=c++11 -O3  -I.
+LDFLAGS=-std=c++11 -O3   -pthread
 LDLIBS=
 
 PROGRAM=blockfinder_parallel_ctpl

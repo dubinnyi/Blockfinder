@@ -64,7 +64,8 @@ int main(int argc, char *argv[]) {
         cout << " scheme size " << b.scheme.patterns.size() << endl;
        // cout << " q size " << q.codes.size() << endl;
 
-        ctpl::thread_pool p(64);
+	unsigned int ncpu = std::thread::hardware_concurrency();
+        ctpl::thread_pool p(ncpu)
 
 
 
