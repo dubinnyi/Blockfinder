@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
        // cout << " q size " << q.codes.size() << endl;
 
 	unsigned int ncpu = std::thread::hardware_concurrency();
-        ctpl::thread_pool p(ncpu)
+        ctpl::thread_pool p(ncpu);
 
 
 
