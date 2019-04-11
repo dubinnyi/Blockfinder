@@ -18,7 +18,7 @@ int main(int argc, char *argv[]) {
 	string name_ncs;
 	int begin, end, samples, min_depth;
 	int auto_min_t_free = -1;
-	cout << "started " << argc << endl;
+	//cout << "started " << argc << endl;
 	if (argc <= 1) {
 
 

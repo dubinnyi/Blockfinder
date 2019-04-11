@@ -130,7 +130,7 @@ void	NCS::make_coding_table() {
 			set <string> s(result.begin(), result.end());
 			power = s.size();
 			label_power[label_types[i]] = power;
-			cout << "NCS POWER" << label_power[label_types[i]] << endl;
+			//cout << "NCS POWER" << label_power[label_types[i]] << endl;
 
 			if (power == 1 and find(NITRO_TYPES.begin(), NITRO_TYPES.end(), label_types[i]) != NITRO_TYPES.end()) {
 				throw ("Error");

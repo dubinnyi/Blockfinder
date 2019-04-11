@@ -5,7 +5,8 @@ BlockFinder::BlockFinder( int bsamples, NCS &bncs, int bmin_depth, int bmin_t_fr
    ncs = bncs;
    min_depth = bmin_depth;
    check_t_free = false; 
-   task_flag = false;
+   run_task_flag = false;
+   create_task_flag = false;
    task_id = -1;
    depth = 0;  
    min_t_free = bmin_t_free;
@@ -115,7 +116,7 @@ int index_of_type(labeltype label_type) {
 } 
 
 void BlockFinder::start_blockfinder() {
-   if(!task_flag){
+   if(!run_task_flag){
      if (check_t_free) {
         cout << "Started maincycle. Samples =" << samples << " min depth = " << min_depth << " min_t_free=" << min_t_free << endl; 
         out1 = "started samples =" + to_string(samples) + " min depth = " + to_string(min_depth) + " min_t_free=" + to_string(min_t_free);
@@ -126,7 +127,7 @@ void BlockFinder::start_blockfinder() {
      }
      cout << " Total number of patterns is  " << patterns[0].size() << endl;
    }
-   if(task_flag){
+   if(run_task_flag){
      ostringstream task_id_string;
      task_id_string<<setw(4)<<setfill('0')<<task_id;
      results_filename = ncs.name + "_"+to_string(samples)+"_"+to_string(min_depth)+"_"+task_id_string.str()+"_cpp.elb";
@@ -330,8 +331,9 @@ void BlockFinder::create_tasks() {
     //bool st = false;
     //vector <int >  ct;
 
-
+    create_task_flag = true;
     int task_counter=0;
+    cout<<"create_tasks: Starting with parallel_depth= "<<parallel_depth<<" and task_size= "<<task_size<<endl;
 
     vector <Task4run> t;
     //Task4run task1({0}, {});
@@ -492,7 +494,7 @@ void BlockFinder::create_tasks() {
    //iterlog.close();
    file1.close();
 
-    cout<< "CreateTasks finished after "<<iterator<< " iterations"<<endl;
+   cout<< "create_tasks: Finished after "<<iterator<< " iterations"<<", "<<tasks.size()<<" tasks generated"<<endl;
 }
 
 
@@ -525,7 +527,7 @@ void BlockFinder::recover_from_counters( const vector <int> & recover_counters, 
    depth = recover_counters.size()-1;
    counter=recover_counters;
    if(result_ofstream.is_open())result_ofstream.close();
-   task_flag = true;
+   run_task_flag = true;
    task_id = numbertask;
 }
 
@@ -558,14 +560,18 @@ void BlockFinder::next_iteration_output()
       string name;
       log<< run_name;
       log<< setw(6) << iterator/LOG_ITERATOR<<"M ";
-      time_t now_cpu_time = clock();
+      //time_t now_cpu_time = clock();
+      //double cpu_time_per_log = (double)(now_cpu_time - start_cpu_time) / CLOCKS_PER_SEC;
+      
       struct timespec now_wall_time;
       clock_gettime(CLOCK_MONOTONIC, &now_wall_time);
-      double cpu_time_per_log = (double)(now_cpu_time - tick_cpu_time) / CLOCKS_PER_SEC;
-      double wall_time_per_log = (now_wall_time.tv_sec - tick_wall_time.tv_sec);
-      wall_time_per_log += (now_wall_time.tv_nsec - tick_wall_time.tv_nsec) / 1000000000.0;
-      log << setw(8) << setprecision(2) << fixed << wall_time_per_log <<" sec ";
-      log << setw(8) << setprecision(1) << fixed << (double)(LOG_ITERATOR/wall_time_per_log) << " iter/sec";
+      double wall_time_per_run = (double)(now_wall_time.tv_sec - start_wall_time.tv_sec);
+      log << setw(8) << setprecision(0) << fixed << wall_time_per_run <<" sec ";
+
+      double tick_time_per_log = (now_wall_time.tv_sec - tick_wall_time.tv_sec);
+      tick_time_per_log += (now_wall_time.tv_nsec - tick_wall_time.tv_nsec) / 1000000000.0;
+      log << setw(7) << setprecision(2) << fixed << (double)(LOG_ITERATOR/tick_time_per_log/1000) << " Kiter/sec";
+
       log << " max_P=" << setw(2) << setiosflags(ios::left) << max_depth + 1;
       log << " ELB_found= " << setw(6) << results_found;
       for(int d=0; d< depth && d<13; d++){
@@ -575,7 +581,7 @@ void BlockFinder::next_iteration_output()
       cout << log.str() << endl;
      
       if(result_ofstream.is_open())result_ofstream.flush();
-      tick_cpu_time = now_cpu_time;
+      //tick_cpu_time = now_cpu_time;
       tick_wall_time = now_wall_time;
 
     }
