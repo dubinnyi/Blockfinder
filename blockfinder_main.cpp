@@ -1,13 +1,18 @@
 #include<pthread.h>
-#include "ctpl.h"
 #include<time.h>
 #include<iomanip>
 #include<iostream>
-#include <sstream>
-#include"blockfinder.h"
+#include<sstream>
+#include<boost/asio.hpp> // host_name
+//#include<boost/chrono.hpp> // process_system_cpu_clock
+#include<chrono>
 
+#include "ctpl.h"
+#include "blockfinder.h"
 
 using namespace std;
+using namespace boost::asio::ip;
+using namespace std::chrono;
 
 int main(int argc, char *argv[]) {
 	string name_ncs;
@@ -29,10 +34,18 @@ int main(int argc, char *argv[]) {
 		convert >> samples;
 		stringstream convertdepth(argv[3]);
 		convertdepth >> min_depth;
-		cout << "readed" << endl;
+		// cout << "readed" << endl;
 
 		NCS ncs = get_NCS(name_ncs);
 		//cout << "////" << endl;
+		system_clock::time_point now_time = system_clock::now();
+		auto readable_time = system_clock::to_time_t(now_time);
+		cout <<"===== BlockFinder started ====="<<endl;
+		cout <<"Host:     "<<host_name()<<endl;
+		cout <<"Command:  ";
+		for(int arg=0; arg<4;arg++)cout<<argv[arg]<<" ";
+		cout<<endl;
+		cout<<"Date/Time: "<<std::ctime(&readable_time)<<endl;
 
 		cout << "NCS with name "<<ncs.name << " generated" << endl;
 		if(ncs.name=="ALT12" && samples == 3){

@@ -83,6 +83,7 @@ int NCS::index_of_labeltype(char lname){
   }
   cerr<<"Error: No labeltype "<<lname<<" in NCS "<<name<<endl; 
   /* TODO: exception */
+  return -1;
 }
 
 void	NCS::make_coding_table() {
