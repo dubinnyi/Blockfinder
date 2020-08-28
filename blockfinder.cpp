@@ -1,8 +1,5 @@
 #include"blockfinder.h"
 
-//#define DEBUG false
-
-// instance of static private member
 std::mutex cout_locker::mtx;
 
 BlockFinder::BlockFinder( int bsamples, NCS &bncs, int bmin_depth, int bmin_t_free, PatternsCodes &patternscode, bool generation){
@@ -19,7 +16,6 @@ BlockFinder::BlockFinder( int bsamples, NCS &bncs, int bmin_depth, int bmin_t_fr
    if (min_t_free >= 0) {
       check_t_free = true;
       index_of_type_T = ncs.index_of_labeltype('T');
-//      cout<<"index of type T is "<<index_of_type_T<<endl;
    } 
    if (min_depth <= 1) {
       min_depth = 2;
@@ -32,23 +28,22 @@ BlockFinder::BlockFinder( int bsamples, NCS &bncs, int bmin_depth, int bmin_t_fr
             patterns[0].push_back(i);
         }
     }
-   //patterns.push_back(generate_patterns(samples ));
    counter.push_back(0); 
    results_found = 0; 
    max_depth = 0;
    iterator = 0;
-   //code_table.setPatternsCodes(patterns, ncs);
     if (generation) {
         code_table.setPatternsCodes(patterns_listl, ncs);
         cout << "Code Table generated, " << code_table.n_patterns <<
              " patterns, " << code_table.n_simplified << " simplified" << endl;
-
     }
     else{
         code_table= patternscode;
     }
-   scheme.setscheme(&code_table,"1", &bncs, samples, {});
-   
+
+    if (generation) {
+        scheme.setscheme(patterns_listl.size(), &code_table, "1", &bncs, samples, {});
+    }
    out1 = "";
    start_cpu_time = clock();
    clock_gettime(CLOCK_MONOTONIC, &start_wall_time);
@@ -59,47 +54,30 @@ BlockFinder::BlockFinder( int bsamples, NCS &bncs, int bmin_depth, int bmin_t_fr
 
 
 void find_schemes ( int id,  int bsamples, NCS &bncs, int bmin_depth, int bmin_t_free, PatternsCodes &patternscode, vector <string> &patterns_listl1, vector <int> &patterns1, Task4run & task_for_run, cout_locker * cl ) {
-
     BlockFinder b (bsamples, bncs, bmin_depth, bmin_t_free, patternscode, false )   ;
     b.cout_lock = cl;
     b.patterns_listl=patterns_listl1;
     b.patterns.push_back(patterns1);
-   // b.code_table=patternscode;
-
+    b.scheme.setscheme(b.patterns_listl.size(), &b.code_table, "1", &bncs, b.samples, {}  );
     b.recover_from_counters(task_for_run);
     b.maincycle(task_for_run);
 
-    /*
-    for ( auto c : b.scheme.simplified ){
-        cout << c.first << " " << c.second << endl;
-    }*/
-
-
 }
-
-
-
-
-
 
 vector<string> BlockFinder::generate_patterns(int  bsamples, bool top ) {
    vector <string> new_set;
    vector <string>  current_set;
    if (bsamples == 0) {
-      new_set = {"" }; //previously "0"
+      new_set = {"" };
       return new_set;
 }
-   
    current_set = generate_patterns(bsamples - 1, false);
-   //new_set = { };
    string new_pattern;
    for (string item : current_set) {
       for (labeltype option : ncs.label_types) {
          new_pattern = item + option.name;
          if (top==true ) {
             if (ncs.check_power(new_pattern, min_depth) ){
-
-
                new_set.push_back(new_pattern); 
             }
       }
@@ -159,14 +137,10 @@ void BlockFinder::start_blockfinder() {
 
 
 void BlockFinder::maincycle( Task4run & task_for_run   ) {
-   vector<int> patternscurrent, next_patterns;
-   int start_point;
-   int patterns_left; 
-   bool flag_t_free;
-
-//    std::ofstream iterlog;          // поток для записи
-//    iterlog.open("iterlog"+to_string(task_id)+".txt");
-
+    vector<int> patternscurrent, next_patterns;
+    int start_point;
+    int patterns_left;
+    bool flag_t_free;
 
     task = task_for_run;
     check_counter_limits=true;
@@ -177,67 +151,53 @@ void BlockFinder::maincycle( Task4run & task_for_run   ) {
     start_blockfinder();
 
     while (true) {
-      if( check_counters_reached_the_end_of_task() ){
-         break;
-      }
-      next_iteration_output();
-      //
-      // the vector<int>  is copied
-      patternscurrent = patterns[depth];
-      if (depth == 0 && ( (counter[0] + min_depth )> patternscurrent.size())) {
-         break;
-      }
-      start_point = 1 + counter[depth];
-      patterns_left = patternscurrent.size() - start_point;
-      //
-      // The scheme is copied
-      back_up_schemes.push_back(scheme);
-      scheme.add_pattern(patternscurrent[counter[depth]]);
-      if (patterns_left < (min_depth - depth - 1)   ) {
-         go_back();
-         continue;
-      }
-      if (patterns_left == 0) {
-         if (scheme.patterns.size() >= min_depth) {
-            save_result();
-         }
-         go_back();
-         continue;
-      }
-      get_next_patterns(patternscurrent, patterns_left, start_point, next_patterns);
-      flag_t_free = true;
-      if (check_t_free) {
-         flag_t_free = check_have_enought_t_free(scheme, next_patterns);
-      }
-      if ( next_patterns.size() != 0 && flag_t_free){
-         go_deeper(next_patterns);
-      }
-      else {
-         if (scheme.patterns.size() >= min_depth) {
-            save_result();
-         }
-         go_parallel(); 
-      }
-      check_max_depth();
-   }
-   cout_lock->lock();
-   cout<< run_name<<" finished task "<<to_string(task_id)<<" after "<<iterator<< " iterations"<<endl;
-   cout_lock->unlock();
+        if( check_counters_reached_the_end_of_task() ){
+            break;
+        }
+        next_iteration_output();
+        //
+        // the vector<int>  is copied
+        patternscurrent = patterns[depth];
+        if (depth == 0 && ( (counter[0] + min_depth )> patternscurrent.size())) {
+            break;
+        }
+        start_point = 1 + counter[depth];
+        patterns_left = patternscurrent.size() - start_point;
+        //
+        // The scheme is copied
+        back_up_schemes.push_back(scheme);
+        scheme.add_pattern(patternscurrent[counter[depth]]);
+        if (patterns_left < (min_depth - depth - 1)   ) {
+            go_back();
+            continue;
+        }
+        if (patterns_left == 0) {
+            if (scheme.number_of_patterns >= min_depth) {
+                save_result();
+            }
+            go_back();
+            continue;
+        }
+        get_next_patterns(patternscurrent, patterns_left, start_point, next_patterns);
+        flag_t_free = true;
+        if (check_t_free) {
+            flag_t_free = check_have_enought_t_free(scheme, next_patterns);
+        }
+        if ( next_patterns.size() != 0 && flag_t_free){
+            go_deeper(next_patterns);
+        }
+        else {
+            if (scheme.number_of_patterns>= min_depth) {
+                save_result();
+            }
+            go_parallel();
+        }
+        check_max_depth();
+    }
+    cout_lock->lock();
+    cout<< run_name<<" finished task "<<to_string(task_id)<<" after "<<iterator<< " iterations"<<endl;
+    cout_lock->unlock();
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 void BlockFinder::create_tasks() {
@@ -245,8 +205,6 @@ void BlockFinder::create_tasks() {
     int start_point;
     int patterns_left;
     bool flag_t_free;
-    //bool st = false;
-    //vector <int >  ct;
 
     create_task_flag = true;
     int task_counter = 0;
@@ -265,18 +223,9 @@ void BlockFinder::create_tasks() {
 
     int kt=0;
 
-
-
-//    std::ofstream iterlog;          // поток для записи  
-//    iterlog.open("CreateTastks_iterlog.txt");
     start_blockfinder();
 
     while (true) {
-        // iterlog<<iterator<<" "<<depth<<" : ";
-        // for(int d=0;d<depth+1; d++)
-        //     iterlog<<counter[d]<<" ";
-        // iterlog<<endl;
-
         next_iteration_output();
 
         patternscurrent = patterns[depth];
@@ -294,31 +243,17 @@ void BlockFinder::create_tasks() {
             continue;
         }
         if (patterns_left == 0) {
-            if (scheme.patterns.size() >= min_depth) {
+           // if (scheme.patterns.size() >= min_depth) {
+            if (scheme.number_of_patterns >= min_depth) {
                 save_result();
-/**
-            cout << "block 1" << endl;
-                cout << " save " << endl;
-                for (int c: counter){
-                    cout << c<< " ";
-
-
-                }
-
-                cout << endl;**/
 
             }
             go_back();
 
-            // temporary break;
-            //break;
-
-
             continue;
         }
         get_next_patterns(patternscurrent, patterns_left, start_point, next_patterns);
-
-
+        
         flag_t_free = true;
         if (check_t_free) {
             flag_t_free = check_have_enought_t_free(scheme, next_patterns);
@@ -327,31 +262,22 @@ void BlockFinder::create_tasks() {
 
             if(depth == parallel_depth){
 
-                //out << "back up " << endl;
-
                 task_counter=task_counter+1;
-                //cout << "this depth " << endl;
-                //kt=kt+counter[pool_depth_test];
 
                 if (task_counter%task_size==0){
 
                     tasks.back().end = counter;
 
-                    //Task4run task1(counter, {});
                     task1.start=counter;
                     task1.end={};
-		    task1.number = task_number;
-		    task1.update_name();
+		            task1.number = task_number;
+		            task1.update_name();
 
                     tasks.push_back(task1);
-		    task_number++;
-
-
+		            task_number++;
 
                     task_counter=0;
                 }
-
-
                 go_parallel();
             }
             if(depth<parallel_depth){
@@ -360,17 +286,11 @@ void BlockFinder::create_tasks() {
 
             }
 
-
-
-
-
-
         }
         else {
-            if (scheme.patterns.size() >= min_depth) {
+            //if (scheme.patterns.size() >= min_depth) {
+            if (scheme.number_of_patterns >= min_depth) {
                 save_result();
-
-
 
             }
             go_parallel();
@@ -379,14 +299,10 @@ void BlockFinder::create_tasks() {
     }
 
    tasks.back().end=counter;
-
-
    ofstream file1("tasksend.txt");
-   //blockfinder_finished();
 
    for (Task4run c: tasks){
-      file1<<(string)c<<endl;
-      /*file1<<c.name<<" start= ";
+      file1<<c.name<<" start= ";
 
       for (int i: c.start){
          file1 <<setw(4)<< i << " ";
@@ -395,17 +311,12 @@ void BlockFinder::create_tasks() {
       file1<<" end= ";
       for (int i: c.end){
          file1 <<setw(4)<< i << " ";
-
       }
-
-      file1 << endl; */
-
+      file1 << endl;
    }
-
 
    //iterlog.close();
    file1.close();
-
    cout<< "create_tasks: Finished after "<<iterator<< " iterations"<<", "<<tasks.size()<<" tasks generated"<<endl;
 }
 
@@ -442,13 +353,9 @@ void BlockFinder::recover_from_counters( const vector <int> & recover_counters, 
    for (int c=0; c<recover_counters.size()-1; c++){
 
       back_up_schemes.push_back(scheme);
-
       scheme.add_pattern(current_patterns[recover_counters[c]]);
-
       get_next_patterns(current_patterns, current_patterns.size()-recover_counters[c]-1, recover_counters[c]+1, new_patterns);
-
       patterns.push_back(new_patterns);
-
       current_patterns = new_patterns;
 
    }
@@ -459,24 +366,6 @@ void BlockFinder::recover_from_counters( const vector <int> & recover_counters, 
    run_task_flag = true;
    task_id = numbertask;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -527,8 +416,7 @@ void BlockFinder::go_parallel() {
 void BlockFinder::check_max_depth() {
    if (depth > max_depth) {
       max_depth = depth;
-//      out1 = "[BlockFinder" + to_string(samples) + " ] New max depth:" + to_string(max_depth); 
-//      cout<<out1<<endl;
+
    }
 
 } 
@@ -543,23 +431,11 @@ void BlockFinder::get_next_patterns(vector <int> & patterns1, int patterns_left,
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
 void BlockFinder::go_deeper(vector <int> next_patterns) {
    patterns.push_back(next_patterns);
    counter.push_back(0);
    depth = depth + 1;
 }
-
 
 void BlockFinder:: blockfinder_finished() {
    cout_lock->lock();
@@ -572,12 +448,9 @@ void BlockFinder::go_back() {
    patterns.pop_back();
    counter.pop_back();
    counter[counter.size() - 1] = counter[counter.size() - 1] + 1;
-
-
    back_up_schemes.pop_back();
    scheme = back_up_schemes[back_up_schemes.size() - 1];
    back_up_schemes.pop_back();
-
 }
 
 void BlockFinder::save_result() {
@@ -586,16 +459,18 @@ void BlockFinder::save_result() {
       return; 
    }
    int depth_of_scheme;
-   depth_of_scheme= scheme.patterns.size();
+
+   depth_of_scheme= scheme.number_of_patterns;
    Scheme_compact new_scheme;
    new_scheme.code_tab_ptr = scheme.code_tab_ptr;
    new_scheme.samples      = scheme.samples;
    new_scheme.patterns     = scheme.patterns;
    new_scheme.simplified   = scheme.simplified;
-   //cout << "see new scheme " << new_scheme.patterns[0] << endl;
+   new_scheme.number_of_patterns = scheme.number_of_patterns;
    //new_scheme = scheme;
    new_scheme.sort();
-   if(   result.find(depth_of_scheme) != result.end() ){ 
+   if(   result.find(depth_of_scheme) != result.end() ){
+
       if (result[depth_of_scheme].find(new_scheme) == result[depth_of_scheme].end()) {
 
          result[depth_of_scheme].insert(new_scheme);
