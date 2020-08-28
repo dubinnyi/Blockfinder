@@ -8,7 +8,8 @@ CPPFLAGS=-std=c++11 -O3 -I.
 LDFLAGS=-std=c++11 -O3 -pthread
 LDLIBS=-lboost_thread -lboost_system -lboost_program_options -lboost_regex
 
-PROGRAM=blockfinder_valarray_${HOST}
+BRANCH=more_valarray
+PROGRAM=blockfinder_${BRANCH}_${HOST}
 PROGRAM2=blockfinder
 
 SRCS=ncs.cpp \
