@@ -158,6 +158,8 @@ bool Scheme::try_pattern(int  new_pattern) {
 	if (good == false) {
 		return false;
 	}
+	valarray <bool> double_codes;
+	double_codes.resize(code_tab_ptr->n_codes, false) ;
 	new_codes = false;
 	int code_1, code_2;
    	int n = new_pattern;

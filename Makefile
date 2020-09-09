@@ -4,8 +4,8 @@ RM=rm -f
 
 
 HOST=$(shell hostname --short)
-CPPFLAGS=-std=c++11 -O3 -I.
-LDFLAGS=-std=c++11 -O3 -pthread
+CPPFLAGS=-std=c++11 -O3 -msse3 -mavx -I.
+LDFLAGS=-std=c++11 -O3  -pthread
 LDLIBS=-lboost_thread -lboost_system -lboost_program_options -lboost_regex
 
 BRANCH=more_valarray
@@ -21,6 +21,7 @@ SRCS=ncs.cpp \
      tasks.cpp
 
 OBJS=$(subst .cpp,.o,$(SRCS))
+ASMS=$(subst .cpp,.asm,$(SRCS))
 
 all: $(PROGRAM)
 
@@ -42,6 +43,10 @@ $(PROGRAM): $(OBJS)
 	$(CXX) $(LDFLAGS) $(LDLIBS) -o $(PROGRAM) $(OBJS) $(LDLIBS)
 	cp $(PROGRAM) $(PROGRAM2)
 
+asm: $(ASMS)
+
+%.asm: %.cpp
+	$(CXX) $(LDFLAGS) $(LDLIBS) -S -o $@ $< $(LDLIBS)
 
 pos_desc_example:
 	g++ -std=c++11 -c pos_desc_example.cpp
