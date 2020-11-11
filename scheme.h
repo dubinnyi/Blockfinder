@@ -1,6 +1,37 @@
-//#pragma once
+#pragma once
 #include"ncs.h"
+#include <stdexcept>
 #include "PatternCodes.h"
+#include <vector>
+
+/*
+#ifdef __AVX512__
+const int Align=64;
+#else
+const int Align=32;
+#endif
+* */
+
+typedef valarray<bool> Vbool;
+/*
+class Vbool: public valarray<bool> {
+    public:
+    Vbool():valarray<bool>(){};
+    Vbool(bool v, int N):valarray<bool>(v, N){};
+    using valarray<bool>::operator =;
+    Vbool& set_true(const uint *a, int n){
+        for(int i=0; i<n; ++i)(*this)[a[i]]=true;
+        return *this;
+    }
+    bool is_true(const uint *a, int n)const{
+        for(int i=0; i<n; ++i){
+            if((*this)[a[i]]) return true;
+        }
+        return false;
+    }
+};
+* */
+
 class Scheme {
 public:
 	string name;
@@ -8,21 +39,14 @@ public:
 	PatternsCodes *code_tab_ptr; 
 	int samples;
 	vector <int> patterns;
-	//set <int> codes;
-	valarray <bool> codes;
-	//set <string> new_codes;
-	valarray <bool> new_codes;
-//	map <string, int> simplified;
-        //valarray<int> simplified;
-        vector <int> simplified;
-
-	//PatternsCodes code_table;
+	Vbool codes;
+	// Vbool new_codes;
+    vector <int> simplified;
 
 	bool good;
 	Scheme();
-	Scheme(PatternsCodes *patternscode, string sname , NCS *sncs , int  bsamples = 0, vector <int>  bpatterns = {});
-
-        // Scheme( string sname = "", NCS sncs = NCS(), int  bsamples = 0, vector <int>  bpatterns = {});
+	Scheme(PatternsCodes *patternscode, string sname , NCS *sncs, 
+            int bsamples=0, vector<int> bpatterns = {});
 
 	bool check_codes();
 	void simplify();
@@ -33,7 +57,8 @@ public:
 	bool try_pattern(int  new_pattern);
 	Scheme direct_product(Scheme scheme);
 	string full_str();
-	void setscheme(PatternsCodes *patternscode, string sname, NCS *sncs , int  bsamples = 0, vector <int>  bpatterns = {});
+	void setscheme(PatternsCodes *patternscode, string sname, NCS *sncs, 
+            int bsamples=0, vector<int> bpatterns = {});
 
 	bool operator<(const Scheme & t2);
 };
@@ -45,18 +70,14 @@ class Scheme_compact{
 public:
 	int samples;
 	PatternsCodes *code_tab_ptr;
-	//valarray <int> patterns;
-	//valarray <int> simplified;
     vector <int> patterns;
     vector <int> simplified;
-    	Scheme_compact();
+    Scheme_compact(){};
 	Scheme_compact(Scheme &scheme);
 	void sort();
 
 	string full_str();
 
 };
-
-
 bool operator==(const Scheme_compact& s1, const Scheme_compact& t2);
 bool operator<(const Scheme_compact& t1, const Scheme_compact& t2);

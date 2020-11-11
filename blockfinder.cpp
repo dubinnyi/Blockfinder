@@ -63,7 +63,8 @@ BlockFinder::BlockFinder( int bsamples, NCS &bncs, int bmin_depth, int bmin_t_fr
 }
 
 
-void find_schemes ( int id,  int bsamples, NCS &bncs, int bmin_depth, int bmin_t_free, PatternsCodes &patternscode, vector <string> &patterns_listl1, vector <int> &patterns1, Task4run & task_for_run, cout_locker * cl ) {
+void find_schemes ( int id,  int bsamples, NCS &bncs, int bmin_depth, int bmin_t_free, PatternsCodes &patternscode, 
+                    vector<string> &patterns_listl1, vector <int> &patterns1, Task4run & task_for_run, cout_locker *cl) {
 
     BlockFinder b (bsamples, bncs, bmin_depth, bmin_t_free, patternscode, false )   ;
     b.cout_lock = cl;
@@ -83,28 +84,22 @@ void find_schemes ( int id,  int bsamples, NCS &bncs, int bmin_depth, int bmin_t
 }
 
 
-
-
-
-
-vector<string> BlockFinder::generate_patterns(int  bsamples, bool top ) {
+vector<string> BlockFinder::generate_patterns(int  bsamples, bool top ){
    vector <string> new_set;
    vector <string>  current_set;
    if (bsamples == 0) {
-      new_set = {"" }; //previously "0"
+      new_set = {""}; //previously "0"
       return new_set;
-}
+    }
    
    current_set = generate_patterns(bsamples - 1, false);
    //new_set = { };
    string new_pattern;
    for (string item : current_set) {
-      for (labeltype option : ncs.label_types) {
+      for (labeltype option : ncs.label_types){
          new_pattern = item + option.name;
-         if (top==true ) {
-            if (ncs.check_power(new_pattern, min_depth) ){
-
-
+         if (top==true){
+            if (ncs.check_power(new_pattern, min_depth)){
                new_set.push_back(new_pattern); 
             }
       }
@@ -129,6 +124,7 @@ int index_of_type(labeltype label_type) {
    static map<char, int>  basic_types = { {typeX.name, 0}, { typeN.name,1 } , {typeC.name, 2} , {typeD.name, 3} , {typeA.name, 4} , {typeT.name, 5} ,{ typeS.name, 6}, {typeF.name, 7} };
    return basic_types[label_type.name]; 
 } 
+
 
 void BlockFinder::start_blockfinder() {
    cout_lock->lock();
@@ -229,20 +225,6 @@ void BlockFinder::maincycle( Task4run & task_for_run   ) {
    cout<< run_name<<" finished task "<<to_string(task_id)<<" after "<<iterator<< " iterations"<<endl;
    cout_lock->unlock();
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 void BlockFinder::create_tasks() {
@@ -415,8 +397,7 @@ void BlockFinder::create_tasks() {
 }
 
 
-bool BlockFinder::check_counters_reached_the_end_of_task()
-{
+bool BlockFinder::check_counters_reached_the_end_of_task(){
     if(!check_counter_limits)return(false);
     
     bool end_of_task = false;
@@ -436,9 +417,11 @@ bool BlockFinder::check_counters_reached_the_end_of_task()
     return end_of_task;
 }
 
+
 void BlockFinder::recover_from_counters( const Task4run & task_for_recover ){
    recover_from_counters(task_for_recover.start, task_for_recover.number);
 }
+
 
 void BlockFinder::recover_from_counters( const vector <int> & recover_counters, int numbertask){
 
@@ -466,27 +449,7 @@ void BlockFinder::recover_from_counters( const vector <int> & recover_counters, 
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-void BlockFinder::next_iteration_output()
-{
+void BlockFinder::next_iteration_output(){
     static const long long LOG_ITERATOR = 1000000; /* Log every one million of iterations */
     iterator++;
     if (iterator % LOG_ITERATOR == 0) {
@@ -523,22 +486,25 @@ void BlockFinder::next_iteration_output()
     }
 }
 
-void BlockFinder::go_parallel() {
+
+void BlockFinder::go_parallel(){
    scheme =back_up_schemes[depth];
    back_up_schemes.pop_back();
    counter[depth] = counter[depth] + 1;
 }
 
-void BlockFinder::check_max_depth() {
-   if (depth > max_depth) {
+
+void BlockFinder::check_max_depth(){
+   if (depth > max_depth){
       max_depth = depth;
 //      out1 = "[BlockFinder" + to_string(samples) + " ] New max depth:" + to_string(max_depth); 
 //      cout<<out1<<endl;
    }
-
 } 
 
-void BlockFinder::get_next_patterns(vector <int> & patterns1, int patterns_left, int  start_point, vector<int> & result_next_patterns) {
+
+void BlockFinder::get_next_patterns(vector <int> & patterns1, int patterns_left, 
+                        int  start_point, vector<int> & result_next_patterns) {
    result_next_patterns = {};
    for (int i = 0; i < patterns_left; i++)  {
       if( scheme.try_pattern(patterns1[i + start_point])) {
@@ -546,17 +512,6 @@ void BlockFinder::get_next_patterns(vector <int> & patterns1, int patterns_left,
       }
    }
 }
-
-
-
-
-
-
-
-
-
-
-
 
 
 void BlockFinder::go_deeper(vector <int> next_patterns) {
@@ -572,6 +527,7 @@ void BlockFinder:: blockfinder_finished() {
    cout_lock->unlock();
 }
 
+
 void BlockFinder::go_back() {
    depth = depth -1;
    patterns.pop_back();
@@ -584,6 +540,7 @@ void BlockFinder::go_back() {
    back_up_schemes.pop_back();
 
 }
+
 
 void BlockFinder::save_result() {
    vector<int> empty_vec = {};
@@ -613,6 +570,7 @@ void BlockFinder::save_result() {
    }
 }
 
+
 bool BlockFinder::check_have_enought_t_free(const Scheme & scheme, const vector<int> &  patterns_left) {
    tuple <int, int> t;
    vector <int> simplified_scheme;
@@ -635,12 +593,14 @@ bool BlockFinder::check_have_enought_t_free(const Scheme & scheme, const vector<
    return (result); 
 }
 
+
 void PatternsCodes::simplify_list_of_patterns(const vector<int>& list_of_patterns, vector<int>& result) {
    result.assign(n_simplified, 0);
    for (int pattern : list_of_patterns) {
       result[simple_ints[pattern]]++;
    }
 }
+
 
 tuple<int, int > PatternsCodes::count_type_in_list_of_simplified(const vector <int>& arg_simplified, int index_of_type) {
    int count_type = 0;
@@ -664,6 +624,7 @@ tuple<int, int > PatternsCodes::count_type_in_list_of_simplified(const vector <i
 #endif
    return  make_tuple(count_type, count_all - count_type);
 }
+
 
 tuple<int, int > PatternsCodes::count_type_in_list_of_patterns(
     const vector <int>& arg_patterns, int index_of_type) {
