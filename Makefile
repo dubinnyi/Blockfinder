@@ -6,6 +6,7 @@ RM=rm -f
 
 HOST=$(shell hostname --short)
 BRANCH=$(shell git name-rev --name-only HEAD)
+DEPDIR := .deps
 CPPFLAGS= -I. 
 CXXFLAGS= -std=c++11 -O3 
 LDFLAGS= -pthread
@@ -23,7 +24,6 @@ SRCS=ncs.cpp \
      tasks.cpp \
      speedo.cpp
 
-DEPDIR := .deps
 DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.d
 COMPILE.cpp = $(CXX) $(DEPFLAGS) $(CXXFLAGS) $(CPPFLAGS) -c
 
@@ -34,7 +34,7 @@ all: $(PROGRAM)
 %.o : %.cpp $(DEPDIR)/%.d | $(DEPDIR)
 	$(COMPILE.cpp) $(OUTPUT_OPTION) $<
 
-(DEPDIR): ; @mkdir -p $@
+$(DEPDIR): ; @mkdir -p $@
 
 DEPFILES := $(SRCS:%.cpp=$(DEPDIR)/%.d)
 $(DEPFILES):
