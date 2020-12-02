@@ -260,7 +260,7 @@ int main(int argc, char *argv[]) {
    printf("The CPU usage time:   %f seconds\n", overall_timer.cpu_time);
    printf("The wall clock time:  %f seconds\n", overall_timer.wall_time);
    printf("CPU/wall clock ratio: %5.2f\n", overall_timer.cpu_time/overall_timer.wall_time);
-   cout<<"Date/Time: "<<overall_timer.readable_date_time()<<endl;
+   cout<<"Date/Time: "<<overall_timer.readable_date_time();
 
    return 0;
 }

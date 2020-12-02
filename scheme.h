@@ -44,7 +44,7 @@ public:
 	vector <int> patterns;
 	Vbool codes;
 	// Vbool new_codes;
-    vector <int> simplified;
+  vector <int> simplified;
 
 	bool good;
 	Scheme();

@@ -10,6 +10,7 @@ std::mutex cout_locker::mtx;
 BlockFinder::BlockFinder( int bsamples, NCS &bncs, int bmin_depth, int bmin_t_free, PatternsCodes &patternscode, bool generation):
    samples(bsamples),
    ncs(bncs),
+   scheme(),
    min_depth(bmin_depth),
    min_t_free(bmin_t_free),
    check_t_free(false),
@@ -34,7 +35,7 @@ BlockFinder::BlockFinder( int bsamples, NCS &bncs, int bmin_depth, int bmin_t_fr
       generate_initial_patterns(patterns_text);
    }else{
       code_table= patternscode;
-   }
+   };
    scheme.setscheme(&code_table,"1", &bncs, samples, {});
    
    speedo_results.clear();
@@ -257,19 +258,20 @@ void BlockFinder::maincycle( Task4run & task_for_run   ) {
          break;
       }
       next_iteration_output();
-      //
-      // the vector<int>  is copied
+      
       patterns_current_ptr = &(patterns[depth]);
-      if (depth == 0 && ( (counter[0] + min_depth )> patterns_current_ptr->size())) {
-         break;
-      }
       start_point = 1 + counter[depth];
       patterns_left = patterns_current_ptr->size() - start_point;
       patterns_capacity_left = code_table.patterns_capacity_rank_correction(*patterns_current_ptr, start_point);
-      //
-      // The scheme is copied
+
+      if (depth == 0)
+         if(patterns_capacity_left < min_depth - 1)
+            break;
+      
       back_up_schemes.push_back(scheme);
+
       scheme.add_pattern((*patterns_current_ptr)[counter[depth]]);
+      
       if (patterns_capacity_left < (min_depth - depth - 1)   ) {
          go_back();
          continue;
@@ -333,16 +335,18 @@ void BlockFinder::create_tasks() {
         next_iteration_output();
 
         patterns_current_ptr = &(patterns[depth]);
-        if (depth == 0 && ( (counter[0] + min_depth )> patterns_current_ptr->size())) {
-            break;
-        }
         start_point = 1 + counter[depth];
         patterns_left = patterns_current_ptr->size() - start_point;
         patterns_capacity_left = code_table.patterns_capacity_rank_correction(*patterns_current_ptr, start_point);
 
+        if(depth == 0)
+            if(patterns_capacity_left < min_depth - 1)
+                break;
+
         back_up_schemes.push_back(scheme);
 
         scheme.add_pattern((*patterns_current_ptr)[counter[depth]]);
+        
         if (patterns_capacity_left < (min_depth - depth - 1)   ) {
             go_back();
             continue;

@@ -303,8 +303,18 @@ void PatternsCodes::calculate_group_ranks(){
 
 int PatternsCodes::patterns_capacity_rank_correction(vector <int> & pints, int start_point){
    int capacity = 0;
-   valarray<bool> group_flag(n_simplified, false);
+   
+   vector<bool> group_flag(n_simplified, false);
+//   for(int g=0; g<n_simplified;g++)
+//      group_flag[g] = 0;
+
    for(int i = start_point; i< pints.size() ; i++){
+      int g = simple_ints[pints[i]];
+      int rank = group_rank[g];
+      if(group_flag[g])
+         continue;
+      if(rank == 1) 
+         group_flag[g]  = true;
       capacity++;
    }
    return capacity;

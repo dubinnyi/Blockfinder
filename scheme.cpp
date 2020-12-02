@@ -25,8 +25,11 @@ bool operator==(const Scheme_compact& t1, const Scheme_compact& s2) {
 }
 
 
-Scheme::Scheme() {
+Scheme::Scheme():
+      name(""),
+      samples(0) {
     patterns={};
+    simplified={};
 }
 
 

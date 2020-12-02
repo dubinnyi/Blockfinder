@@ -43,8 +43,6 @@ include $(wildcard $(DEPFILES))
 
 
 
-counter.o: counter.cpp counter.h
-
 $(PROGRAM): $(OBJS)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(LDLIBS) -o $(PROGRAM) $(OBJS) $(LDLIBS)
 	cp $(PROGRAM) $(PROGRAM2)
