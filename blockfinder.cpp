@@ -79,7 +79,7 @@ void BlockFinder::generate_initial_patterns(vector<string> &p_text){
      vector<size_t> n_diff_row, n_diff_col, n_compat;
      vector<int> group_simple_ints = code_table.simple_ints;
      if(debug){
-        cout<<"START THE CODE TABLE DRYING"<<endl;
+        cout<<"START THE CODE TABLE DRYING/SORTING"<<endl;
         cout<<"Calculate different codes in each row and column (ROWS and COLS below)"<<endl;
      }
      code_table.count_different_codes_in_vector(code_table.pattern_ints, n_diff_row, n_diff_col);
@@ -240,7 +240,8 @@ void BlockFinder::maincycle( Task4run & task_for_run   ) {
    vector<int> *patterns_current_ptr; 
    vector <int> next_patterns;
    int start_point;
-   int patterns_left; 
+   int patterns_left;
+   int patterns_capacity_left; 
    bool flag_t_free;
 
    task = task_for_run;
@@ -264,11 +265,12 @@ void BlockFinder::maincycle( Task4run & task_for_run   ) {
       }
       start_point = 1 + counter[depth];
       patterns_left = patterns_current_ptr->size() - start_point;
+      patterns_capacity_left = code_table.patterns_capacity_rank_correction(*patterns_current_ptr, start_point);
       //
       // The scheme is copied
       back_up_schemes.push_back(scheme);
       scheme.add_pattern((*patterns_current_ptr)[counter[depth]]);
-      if (patterns_left < (min_depth - depth - 1)   ) {
+      if (patterns_capacity_left < (min_depth - depth - 1)   ) {
          go_back();
          continue;
       }
@@ -302,43 +304,46 @@ void BlockFinder::maincycle( Task4run & task_for_run   ) {
 
 
 void BlockFinder::create_tasks() {
-    vector<int> patternscurrent, next_patterns;
-    int start_point;
-    int patterns_left;
-    bool flag_t_free;
+   vector<int> *patterns_current_ptr;
+   vector<int> next_patterns;
+   int start_point;
+   int patterns_left;
+   int patterns_capacity_left; 
+   bool flag_t_free;
 
-    create_task_flag = true;
-    int task_counter = 0;
-    int task_number  = 0;
-    cout<<"create_tasks: Starting with parallel_depth= "<<parallel_depth<<" and task_size= "<<task_size<<endl;
+   create_task_flag = true;
+   int task_counter = 0;
+   int task_number  = 0;
+   cout<<"create_tasks: Starting with parallel_depth= "<<parallel_depth<<" and task_size= "<<task_size<<endl;
 
-    vector <Task4run> t;
-    Task4run task1;
-    task1.start={0};
-    task1.number = task_number;
-    task1.update_name();
-    task1.end={};
-    tasks.push_back(task1);
-    task_number++;
+   vector <Task4run> t;
+   Task4run task1;
+   task1.start={0};
+   task1.number = task_number;
+   task1.update_name();
+   task1.end={};
+   tasks.push_back(task1);
+   task_number++;
 
-    int kt=0;
-    start_blockfinder();
+   int kt=0;
+   start_blockfinder();
 
-    while (true) {
+   while (true) {
 
         next_iteration_output();
 
-        patternscurrent = patterns[depth];
-        if (depth == 0 && ( (counter[0] + min_depth )> patternscurrent.size())) {
+        patterns_current_ptr = &(patterns[depth]);
+        if (depth == 0 && ( (counter[0] + min_depth )> patterns_current_ptr->size())) {
             break;
         }
         start_point = 1 + counter[depth];
-        patterns_left = patternscurrent.size() - start_point;
+        patterns_left = patterns_current_ptr->size() - start_point;
+        patterns_capacity_left = code_table.patterns_capacity_rank_correction(*patterns_current_ptr, start_point);
 
         back_up_schemes.push_back(scheme);
 
-        scheme.add_pattern(patternscurrent[counter[depth]]);
-        if (patterns_left < (min_depth - depth - 1)   ) {
+        scheme.add_pattern((*patterns_current_ptr)[counter[depth]]);
+        if (patterns_capacity_left < (min_depth - depth - 1)   ) {
             go_back();
             continue;
         }
@@ -349,7 +354,7 @@ void BlockFinder::create_tasks() {
             go_back();
             continue;
         }
-        get_next_patterns(patternscurrent, patterns_left, start_point, next_patterns);
+        get_next_patterns(*patterns_current_ptr, patterns_left, start_point, next_patterns);
 
         flag_t_free = true;
         if (check_t_free) {
@@ -402,6 +407,8 @@ void BlockFinder::create_tasks() {
 
    cout<< "create_tasks: Finished after "<<speedo_iterations<< " iterations"<<", "<<tasks.size()<<" tasks generated"<<endl;
 }
+
+
 
 
 bool BlockFinder::check_counters_reached_the_end_of_task(){
@@ -537,7 +544,7 @@ void BlockFinder::go_parallel(){
 
 
 
-void BlockFinder::go_deeper(vector <int> next_patterns) {
+void BlockFinder::go_deeper(const vector <int> & next_patterns) {
    patterns.push_back(next_patterns);
    counter.push_back(0);
    depth = depth + 1;

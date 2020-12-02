@@ -73,13 +73,13 @@ public:
   void next_iteration_output();
   void go_back();
   void save_result();
-  bool check_have_enought_t_free(const Scheme & scheme, const vector<int> &patterns_left);
+  bool check_have_enought_t_free(const Scheme & scheme, const vector<int> & patterns_left);
   void write_result(Scheme_compact  new_scheme);
   void get_next_patterns(vector <int> & patterns, int patterns_left, int start_point, 
                             vector<int> &result);
   void get_next_patterns_speedo(vector <int> & patterns, int patterns_left, int start_point, 
                             vector<int> &result);
-  void go_deeper(vector <int> next_patterns);
+  void go_deeper(const vector <int> & next_patterns);
   void go_parallel();
   void check_max_depth();
   void find_schemes();

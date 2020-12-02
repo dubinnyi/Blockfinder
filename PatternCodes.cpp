@@ -299,3 +299,14 @@ void PatternsCodes::calculate_group_ranks(){
       }
    }
 }
+
+
+int PatternsCodes::patterns_capacity_rank_correction(vector <int> & pints, int start_point){
+   int capacity = 0;
+   valarray<bool> group_flag(n_simplified, false);
+   for(int i = start_point; i< pints.size() ; i++){
+      capacity++;
+   }
+   return capacity;
+}
+
