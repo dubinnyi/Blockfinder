@@ -8,7 +8,7 @@ HOST=$(shell hostname --short)
 BRANCH=$(shell git name-rev --name-only HEAD)
 DEPDIR := .deps
 CPPFLAGS= -I. 
-CXXFLAGS= -std=c++11 -O3 
+CXXFLAGS= -std=c++11 -O3
 LDFLAGS= -pthread
 LDLIBS=-lboost_thread -lboost_system -lboost_program_options -lboost_regex
 

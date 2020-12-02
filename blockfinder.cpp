@@ -58,42 +58,59 @@ void find_schemes ( int id,  int bsamples, NCS &bncs, int bmin_depth, int bmin_t
 
 void BlockFinder::generate_initial_patterns(vector<string> &p_text){
    bool new_algo = true;
+   bool sort_patterns = true;
+   bool debug = false;
+
    patterns_text = p_text;
    code_table.setPatternsCodes(patterns_text, ncs);
+   patterns.clear();
+   patterns.push_back(code_table.pattern_ints);
+   
    cout << "Code Table generated, " << code_table.n_patterns <<
            " patterns, " << code_table.n_simplified << " simplified" << endl;
    
    cout<<"List of unique simplified patterns with multiplicities:"<<endl;
    code_table.print_simplified_patterns(cout);
+
    if (new_algo) {
      //cout<<"CODES"<<endl;
      //code_table.print_codes(cout);
      //cout<<endl;
      vector<size_t> n_diff_row, n_diff_col, n_compat;
-     cout<<"START THE CODE TABLE DRYING"<<endl;
-     cout<<"Calculate different codes in each row and column (ROWS and COLS below)"<<endl;
+     vector<int> group_simple_ints = code_table.simple_ints;
+     if(debug){
+        cout<<"START THE CODE TABLE DRYING"<<endl;
+        cout<<"Calculate different codes in each row and column (ROWS and COLS below)"<<endl;
+     }
      code_table.count_different_codes_in_vector(code_table.pattern_ints, n_diff_row, n_diff_col);
 
-     cout<<"Calculate number of campatible patterns for each pattern using pairwise checking (#Compat)"<<endl;
+     if(debug)
+        cout<<"Calculate number of campatible patterns for each pattern using pairwise checking (#Compat)"<<endl;
      code_table.count_pairwise_compatible(code_table.pattern_ints, n_compat);
 
-     cout<<"Sorting all patterns by #Compat"<<endl;
-     vector<size_t> p(n_compat.size());
-     iota(p.begin(), p.end(), 0);
-     vector<int> & si = code_table.simple_ints;
-     vector<string> &pt = patterns_text;
-     sort(p.begin(), p.end(), [&n_compat, &si, &pt](const size_t a, const size_t b){ 
-         return (n_compat[a] < n_compat[b] or 
-            n_compat[a] == n_compat[b] and si[a] < si[b] or 
-            n_compat[a] == n_compat[b] and si[a] == si[b] and pt[a] < pt[b]) ; 
-         } );
-  //   auto p  = sort_permutation(n_compat, [&n_compat](const size_t &a, const size_t &b){ return (n_compat[a] > n_compat[b]); } );
+     vector<string> patterns_text_sorted = p_text;
+     if(sort_patterns){
+        if(debug){
+           cout<<"Sorting all patterns by #Compat"<<endl;
+        }
+        vector<size_t> p(n_compat.size());
+        iota(p.begin(), p.end(), 0);
+        vector<int> & si = code_table.simple_ints;
+        vector<string> & pt = patterns_text_sorted;
+        sort(p.begin(), p.end(), [&n_compat, &si, &pt](const size_t a, const size_t b){ 
+            return (n_compat[a] < n_compat[b] or 
+               n_compat[a] == n_compat[b] and si[a] < si[b] or 
+               n_compat[a] == n_compat[b] and si[a] == si[b] and pt[a] < pt[b]) ; 
+            } );
+        //   auto p  = sort_permutation(n_compat, [&n_compat](const size_t &a, const size_t &b){ return (n_compat[a] > n_compat[b]); } );
 
-     //vector<string> paterns_text_sorted = apply_permutation(patterns_text, p);
-     apply_permutation_in_place(patterns_text, p);
-     apply_permutation_in_place(n_diff_row, p);
-     apply_permutation_in_place(n_diff_col, p);
-     apply_permutation_in_place(n_compat, p);
+        //vector<string> patterns_text_sorted = apply_permutation(patterns_text, p);
+        apply_permutation_in_place(patterns_text_sorted, p);
+        apply_permutation_in_place(group_simple_ints, p);
+        apply_permutation_in_place(n_diff_row, p);
+        apply_permutation_in_place(n_diff_col, p);
+        apply_permutation_in_place(n_compat, p);
+     }
      
      Vbool n_codes_Ok(false, code_table.n_patterns);
      Vbool n_compat_Ok(false, code_table.n_patterns);
@@ -110,39 +127,34 @@ void BlockFinder::generate_initial_patterns(vector<string> &p_text){
         }
         if( n_codes_Ok[i] and n_compat_Ok[i]){
            pattern_Ok[i] = true;
-           filtered_patterns_text.push_back(patterns_text[i]);
+           filtered_patterns_text.push_back(patterns_text_sorted[i]);
            n_filtered++;
         }
      }
 
-     cout<<setw(4)<<"#"<<" "<<setw(code_table.n_samples)<<"PAT"<<" ";
-     cout<<setw(3)<<"GR"<<" "<<setw(4)<<"ROWS"<<" "<<setw(4)<<"COLS"<<" ";
-     cout<<setw(6)<<"Codes?"<<" "<<setw(7)<<"#Compat"<<" "<<setw(7)<<"Compat?"<<" "<<setw(6)<<"Pattern?";
-     cout<<endl;
-     for(int i=0; i<code_table.n_patterns;i++){
-        cout<<setw(4)<<i<<" "<<code_table.patterns[i]<<" "<<setw(3)<<code_table.simple_ints[i]<<" ";
-        cout<<setw(4)<<n_diff_row[i]<<" "<<setw(4)<<n_diff_col[i]<<" ";
-        cout<<setw(6)<<(n_codes_Ok[i]?"Ok":"!!!")<<" ";
-        cout<<setw(7)<<(n_compat[i])<<" ";
-        cout<<setw(7)<<(n_compat_Ok[i]?"Ok":"!!!")<<" ";
-        cout<<setw(6)<<(pattern_Ok[i]?"Ok":"!!!")<<" ";
+     if(debug){
+        cout<<setw(4)<<"#"<<" "<<setw(code_table.n_samples)<<"PAT"<<" ";
+        cout<<setw(3)<<"GR"<<" "<<setw(4)<<"ROWS"<<" "<<setw(4)<<"COLS"<<" ";
+        cout<<setw(6)<<"Codes?"<<" "<<setw(7)<<"#Compat"<<" "<<setw(7)<<"Compat?"<<" "<<setw(6)<<"Pattern?";
         cout<<endl;
-     };
+        for(int i=0; i<code_table.n_patterns;i++){
+           cout<<setw(4)<<i<<" "<<patterns_text_sorted[i]<<" "<<setw(3)<<group_simple_ints[i]<<" ";
+           cout<<setw(4)<<n_diff_row[i]<<" "<<setw(4)<<n_diff_col[i]<<" ";
+           cout<<setw(6)<<(n_codes_Ok[i]?"Ok":"!!!")<<" ";
+           cout<<setw(7)<<(n_compat[i])<<" ";
+           cout<<setw(7)<<(n_compat_Ok[i]?"Ok":"!!!")<<" ";
+           cout<<setw(6)<<(pattern_Ok[i]?"Ok":"!!!")<<" ";
+           cout<<endl;
+        };
 
-     cout<<"n_filtered = "<<n_filtered<<", n_patterns = "<<code_table.n_patterns<<endl;
-     if(filtered_patterns_text != code_table.patterns){
+        cout<<"n_filtered = "<<n_filtered<<", n_patterns = "<<code_table.n_patterns<<endl;
+     }
+     if(filtered_patterns_text != p_text){
         cout<<endl<<"The list of patterns was changed."<<endl;
         cout<<"RECURSIVELY CALL GENERATE_INITIAL_PATTERNS"<<endl<<endl;
         generate_initial_patterns(filtered_patterns_text);
-     }else{
-        code_table.setPatternsCodes(patterns_text, ncs);
-        cout << "Sorted code table is generated, " << code_table.n_patterns <<
-             " patterns, " << code_table.n_simplified << " simplified" << endl;
      }
    }
-   patterns.clear();
-   patterns.push_back(code_table.pattern_ints);
-
 }
 
 

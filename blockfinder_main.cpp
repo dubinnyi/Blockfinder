@@ -31,6 +31,7 @@ int main(int argc, char *argv[]) {
    string print_codes_file;
    bool   print_codes_flag;
    bool   dry_run_flag;
+   bool   run_groups_flag;
    NCS ncs;
    int samples, min_depth, parallel_depth, task_size;
    int auto_min_t_free = -1;
@@ -54,6 +55,7 @@ int main(int argc, char *argv[]) {
          ("log-speed", po::bool_switch())
          ("log-state", po::bool_switch())
          ("dry-run", po::bool_switch(&dry_run_flag),"Make all preparations, do not start BlocFinder for actual calculations")
+         ("run-groups", po::bool_switch(&run_groups_flag),"Run blockfinder for each simplified group separately")
          ("list-ncs", "List all supporten NCS")
       ;
       pos_desc.add("NCS", 1)
@@ -164,6 +166,21 @@ int main(int argc, char *argv[]) {
       exit(0);
    }
 
+   if(run_groups_flag){
+      cout<<endl<<"RUN blockfinder for each group separately"<<endl;
+      Task4run group_task; // default task, runs all iterations
+      for(int group=0; group<b.code_table.n_simplified; group++){
+         int group_min_depth = 2;
+         BlockFinder bgroup(samples, ncs, group_min_depth, auto_min_t_free, empty_table);
+         bgroup.generate_initial_patterns(b.code_table.group_pattern_text[group]);
+         group_task.name = b.code_table.unique_simplified_patterns[group];
+         cout<<endl<<endl<<"RUN group "<<group<<" "<<group_task.name<<endl<<endl<<endl;
+         bgroup.run_task_flag = true;
+         bgroup.task_id = group;
+         bgroup.maincycle(group_task);
+      }
+   }
+
    cout<<"CREATE TASKS STARTED "<<endl;
    b.create_tasks();
    cout<<"CREATE TASKS FINISHED. "<<to_string(b.tasks.size())<<" TASKS CREATED"<<endl;
@@ -181,27 +198,27 @@ int main(int argc, char *argv[]) {
         while ( getline (restart,  line) ){
           if(i<b.tasks.size()){
             Task4run restart_task(line);
-	    int task_number = restart_task.number;
-	    if(task_number >= b.tasks.size()){
+       int task_number = restart_task.number;
+       if(task_number >= b.tasks.size()){
               cerr<<line<<endl;
-	      cerr<<"   Error: task number "<<task_number<<
-		          " is out of range: "<<b.tasks.size()<<endl;
-	      i++;
-	      continue;
-	    }
-	    Task4run generated_task = b.tasks[restart_task.number];
-	    if(! ( restart_task == generated_task) ){
-	      cerr<<line<<endl;
-	      cerr<<"  -- Tasks do not match! "<<endl;
-	      cerr<<"    restart_task ="<<  (string)restart_task<<endl;
-	      cerr<<"  generated_task ="<< (string)generated_task<<endl;
-	    }else{
-	      run_tasks.push_back(restart_task);
-	      if (i<10){
-	         cout<<line<<"  -- OK"<<endl;
-	      }
-	      if(i==10)cout<<"..."<<endl;
-	    }
+         cerr<<"   Error: task number "<<task_number<<
+                " is out of range: "<<b.tasks.size()<<endl;
+         i++;
+         continue;
+       }
+       Task4run generated_task = b.tasks[restart_task.number];
+       if(! ( restart_task == generated_task) ){
+         cerr<<line<<endl;
+         cerr<<"  -- Tasks do not match! "<<endl;
+         cerr<<"    restart_task ="<<  (string)restart_task<<endl;
+         cerr<<"  generated_task ="<< (string)generated_task<<endl;
+       }else{
+         run_tasks.push_back(restart_task);
+         if (i<10){
+            cout<<line<<"  -- OK"<<endl;
+         }
+         if(i==10)cout<<"..."<<endl;
+       }
           }
           i++;
         }

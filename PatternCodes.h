@@ -29,6 +29,14 @@ public:
     vector <int>    simple_multiplicity; /* of size n_simplified */
       /* Number of patterns that are simplified to this simple form
        * The sum of vector elements is equal to n_patterns */
+    vector < vector <int> >    group_pattern_ints;  /* of size n_simplified */
+    vector < vector <string> > group_pattern_text;  /* of size n_simplified */
+      /* Patterns in each groups as separate vector */
+    vector <int>    group_rank;  /* of size n_simplified */
+      // group rank = 1 or 2
+      // group rank = 1 means than only one element from group could be
+      // taken for the scheme building
+      // group rank = 2 means that more then 2 elenemts could be taken
 
     valarray<bitset<N_LABELTYPES> > have_labeltype_simplified_flag; /* of size n_simplified */
     valarray<bitset<N_LABELTYPES> > have_labeltype_pattern_flag;    /* of size n_patterns */
@@ -66,6 +74,7 @@ private:
     void create_simplified_table();
     void create_labeltype_flags();
     void create_codes_table();
+    void calculate_group_ranks();
 };
 
 
