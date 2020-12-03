@@ -59,7 +59,7 @@ void find_schemes ( int id,  int bsamples, NCS &bncs, int bmin_depth, int bmin_t
 void BlockFinder::generate_initial_patterns(vector<string> &p_text){
    bool new_algo = true;
    bool sort_patterns = true;
-   bool debug = false;
+   bool debug = true;
 
    patterns_text = p_text;
    code_table.setPatternsCodes(patterns_text, ncs);
@@ -89,6 +89,7 @@ void BlockFinder::generate_initial_patterns(vector<string> &p_text){
      code_table.count_pairwise_compatible(code_table.pattern_ints, n_compat);
 
      vector<string> patterns_text_sorted = p_text;
+     vector<int> prank = code_table.pattern_rank;
      if(sort_patterns){
         if(debug){
            cout<<"Sorting all patterns by #Compat"<<endl;
@@ -97,14 +98,17 @@ void BlockFinder::generate_initial_patterns(vector<string> &p_text){
         iota(p.begin(), p.end(), 0);
         vector<int> & si = code_table.simple_ints;
         vector<string> & pt = patterns_text_sorted;
-        sort(p.begin(), p.end(), [&n_compat, &si, &pt](const size_t a, const size_t b){ 
-            return (n_compat[a] < n_compat[b] or 
-               n_compat[a] == n_compat[b] and si[a] < si[b] or 
-               n_compat[a] == n_compat[b] and si[a] == si[b] and pt[a] < pt[b]) ; 
+        sort(p.begin(), p.end(), [&prank, &n_compat, &si, &pt](const size_t a, const size_t b){ 
+            return (
+               prank[a] < prank[b] or 
+               prank[a] == prank[b] and n_compat[a] < n_compat[b] or 
+               prank[a] == prank[b] and n_compat[a] == n_compat[b] and si[a] < si[b] or 
+               prank[a] == prank[b] and n_compat[a] == n_compat[b] and si[a] == si[b] and pt[a] < pt[b]) ; 
             } );
         //   auto p  = sort_permutation(n_compat, [&n_compat](const size_t &a, const size_t &b){ return (n_compat[a] > n_compat[b]); } );
 
         //vector<string> patterns_text_sorted = apply_permutation(patterns_text, p);
+        apply_permutation_in_place(prank, p);
         apply_permutation_in_place(patterns_text_sorted, p);
         apply_permutation_in_place(group_simple_ints, p);
         apply_permutation_in_place(n_diff_row, p);
@@ -134,11 +138,12 @@ void BlockFinder::generate_initial_patterns(vector<string> &p_text){
 
      if(debug){
         cout<<setw(4)<<"#"<<" "<<setw(code_table.n_samples)<<"PAT"<<" ";
-        cout<<setw(3)<<"GR"<<" "<<setw(4)<<"ROWS"<<" "<<setw(4)<<"COLS"<<" ";
+        cout<<setw(3)<<"GR"<<" "<<setw(4)<<"RANK"<<" "<<setw(4)<<"ROWS"<<" "<<setw(4)<<"COLS"<<" ";
         cout<<setw(6)<<"Codes?"<<" "<<setw(7)<<"#Compat"<<" "<<setw(7)<<"Compat?"<<" "<<setw(6)<<"Pattern?";
         cout<<endl;
         for(int i=0; i<code_table.n_patterns;i++){
            cout<<setw(4)<<i<<" "<<patterns_text_sorted[i]<<" "<<setw(3)<<group_simple_ints[i]<<" ";
+           cout<<setw(4)<<prank[i]<<" ";
            cout<<setw(4)<<n_diff_row[i]<<" "<<setw(4)<<n_diff_col[i]<<" ";
            cout<<setw(6)<<(n_codes_Ok[i]?"Ok":"!!!")<<" ";
            cout<<setw(7)<<(n_compat[i])<<" ";
