@@ -69,6 +69,7 @@ public:
     void count_different_codes_in_vector(const vector <int> &  patterns, vector <size_t> &n_diff_raw, vector <size_t> &n_diff_col);
     void count_pairwise_compatible(const vector <int> & patterns, int p, size_t & n_compat, Vbool & compat);
     void count_pairwise_compatible(const vector <int> & patterns, vector< size_t> & n_compat);
+    int patterns_capacity_rank_correction(vector <int> & pints, int start_point);
     
 private:
     void create_simplified_table();
