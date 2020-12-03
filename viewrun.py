@@ -23,7 +23,10 @@ def scan_tasks(taskfile):
          tasks.append(task)
    return(tasks)
 
-task_run_re= re.compile('^\\[Task(?P<task>\d+)\\] +(?P<iter>\d+)M +(?P<time>\d+) sec +(?P<speed>\d+\.\d+) +Kiter\\/sec +max_P=(?P<maxP>\d+) +ELB_found= (?P<ELB>\d+)')
+task_run_re1= re.compile('^\\[Task(?P<task>\d+)\\] +(?P<iter>\d+)M +(?P<time>\d+) sec +(?P<speed>\d+\.\d+) +Kiter\\/sec +max_P=(?P<maxP>\d+) +ELB_found= (?P<ELB>\d+)')
+task_run_re2= re.compile('^\\[Task(?P<task>\d+)\\] +(?P<iter>\d+)M +(?P<time>\d+) sec +(?P<speed>\d+\.\d+) +Kiter\\/sec +((?P<codespeed>\d+\.\d+) +Mcodes\\/sec)? +max_P=(?P<maxP>\d+) +ELB_found= (?P<ELB>\d+)')
+task_run_re = task_run_re2
+#[Task00174]     9M        8 sec  973.97 Kiter/sec  100.34 Mcodes/sec max_P=10 ELB_found= 0
 task_finished_re = re.compile('^\\[Task(?P<task>\d+)\\] finished task (?P<task2>\d+) after (?P<iter>\d+) iterations')
 
 def scan_log(args, tasks):

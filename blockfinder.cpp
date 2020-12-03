@@ -57,9 +57,9 @@ void find_schemes ( int id,  int bsamples, NCS &bncs, int bmin_depth, int bmin_t
 
 
 void BlockFinder::generate_initial_patterns(vector<string> &p_text){
-   bool new_algo = true;
-   bool sort_patterns = true;
-   bool debug = true;
+   bool dry_table = true;
+   bool sort_patterns =true;
+   bool debug = false;
 
    patterns_text = p_text;
    code_table.setPatternsCodes(patterns_text, ncs);
@@ -72,14 +72,14 @@ void BlockFinder::generate_initial_patterns(vector<string> &p_text){
    cout<<"List of unique simplified patterns with multiplicities:"<<endl;
    code_table.print_simplified_patterns(cout);
 
-   if (new_algo) {
+   if (dry_table or sort_patterns) {
      //cout<<"CODES"<<endl;
      //code_table.print_codes(cout);
      //cout<<endl;
      vector<size_t> n_diff_row, n_diff_col, n_compat;
      vector<int> group_simple_ints = code_table.simple_ints;
      if(debug){
-        cout<<"START THE CODE TABLE DRYING/SORTING"<<endl;
+        cout<<"START THE CODE TABLE DRYING AND/OR SORTING"<<endl;
         cout<<"Calculate different codes in each row and column (ROWS and COLS below)"<<endl;
      }
      code_table.count_different_codes_in_vector(code_table.pattern_ints, n_diff_row, n_diff_col);
@@ -90,9 +90,10 @@ void BlockFinder::generate_initial_patterns(vector<string> &p_text){
 
      vector<string> patterns_text_sorted = p_text;
      vector<int> prank = code_table.pattern_rank;
+
      if(sort_patterns){
         if(debug){
-           cout<<"Sorting all patterns by #Compat"<<endl;
+           cout<<"SORTING ALL PATTERNS BY RANK, #COMPAT, GROUP AND TEXT"<<endl;
         }
         vector<size_t> p(n_compat.size());
         iota(p.begin(), p.end(), 0);
@@ -100,9 +101,9 @@ void BlockFinder::generate_initial_patterns(vector<string> &p_text){
         vector<string> & pt = patterns_text_sorted;
         sort(p.begin(), p.end(), [&prank, &n_compat, &si, &pt](const size_t a, const size_t b){ 
             return (
-               prank[a] < prank[b] or 
-               prank[a] == prank[b] and n_compat[a] < n_compat[b] or 
-               prank[a] == prank[b] and n_compat[a] == n_compat[b] and si[a] < si[b] or 
+               prank[a] <  prank[b] or 
+               prank[a] == prank[b] and n_compat[a] <  n_compat[b] or 
+               prank[a] == prank[b] and n_compat[a] == n_compat[b] and si[a] <  si[b] or 
                prank[a] == prank[b] and n_compat[a] == n_compat[b] and si[a] == si[b] and pt[a] < pt[b]) ; 
             } );
         //   auto p  = sort_permutation(n_compat, [&n_compat](const size_t &a, const size_t &b){ return (n_compat[a] > n_compat[b]); } );
@@ -122,18 +123,27 @@ void BlockFinder::generate_initial_patterns(vector<string> &p_text){
 
      vector<string> filtered_patterns_text;
      int n_filtered = 0;
-     for(int i=0; i<code_table.n_patterns; i++){
-        if( n_diff_row[i]>=min_depth and n_diff_col[i]>= min_depth ){
-           n_codes_Ok[i] = true;
+     if(dry_table){
+        if(debug){
+           cout<<"DRY TABLE: exclude all patterns with only one different code in row or col"<<endl;
         }
-        if( n_compat[i]>= min_depth ){
-           n_compat_Ok[i] = true;
+
+        for(int i=0; i<code_table.n_patterns; i++){
+           if( n_diff_row[i]>=min_depth and n_diff_col[i]>= min_depth ){
+              n_codes_Ok[i] = true;
+           }
+           if( n_compat[i]>= min_depth ){
+              n_compat_Ok[i] = true;
+           }
+           if( n_codes_Ok[i] and n_compat_Ok[i]){
+              pattern_Ok[i] = true;
+              filtered_patterns_text.push_back(patterns_text_sorted[i]);
+              n_filtered++;
+           }
         }
-        if( n_codes_Ok[i] and n_compat_Ok[i]){
-           pattern_Ok[i] = true;
-           filtered_patterns_text.push_back(patterns_text_sorted[i]);
-           n_filtered++;
-        }
+     }else{
+        filtered_patterns_text = patterns_text_sorted;
+        n_filtered = patterns_text_sorted.size();
      }
 
      if(debug){
