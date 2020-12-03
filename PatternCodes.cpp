@@ -298,6 +298,10 @@ void PatternsCodes::calculate_group_ranks(){
          group_rank[g] = 1;
       }
    }
+   pattern_rank.resize(n_patterns);
+   for(int p=0; p<n_patterns; p++){
+      pattern_rank[p] =  group_rank[simple_ints[p]];
+   }
 }
 
 

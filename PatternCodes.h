@@ -23,7 +23,7 @@ public:
     vector <string> simple_label; /* of size n_simplified */
     vector <int>    pattern_ints; /* of size n_patterns, actually 0, 1, 2, .... n_patterns -1 */
     vector <int>    simple_ints;  /* of size n_patterns, 
-	 index of simple_form in unique_simplified_patterns */
+	       index of simple_form in unique_simplified_patterns */
     vector <string> unique_simplified_patterns; /* of size n_simplified */
     map <string, int> code_to_number;
     vector <int>    simple_multiplicity; /* of size n_simplified */
@@ -37,6 +37,8 @@ public:
       // group rank = 1 means than only one element from group could be
       // taken for the scheme building
       // group rank = 2 means that more then 2 elenemts could be taken
+    vector <int>    pattern_rank;  /* of size n_patterns */
+      // pattern rank is the rank of the pattern group
 
     valarray<bitset<N_LABELTYPES> > have_labeltype_simplified_flag; /* of size n_simplified */
     valarray<bitset<N_LABELTYPES> > have_labeltype_pattern_flag;    /* of size n_patterns */
