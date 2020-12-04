@@ -180,10 +180,13 @@ int main(int argc, char *argv[]) {
       if (ifblocks.is_open()){
          while(not ifblocks.eof()){
              Scheme s(&b.code_table, &ncs, ifblocks);
-             if( s.good )
+             if( s.good and s.patterns.size() )
                 initial_blocks.push_back(s);
          }
-         cout<<"Blocks read: "<<initial_blocks.size()<<" from file "<<blocks_file<<endl;
+         cout<<"Initial blocks: read "<<initial_blocks.size()<<" blocks from file "<<blocks_file<<endl;
+         //for(Scheme read_scheme : initial_blocks){
+         //   cout<<read_scheme.full_str();
+         //}
       }else{
          cerr<<"Could not open file "<<blocks_file<<" for reading"<<endl;
       }

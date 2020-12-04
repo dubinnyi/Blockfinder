@@ -99,40 +99,56 @@ Scheme::Scheme(PatternsCodes *patternscode, string sname, NCS *sncs, int  bsampl
 
 
 Scheme::Scheme(PatternsCodes *patternscode, NCS *sncs, ifstream & in){
+   bool debug = false;
+
    name = "file";
    code_tab_ptr = patternscode; 
    ncs_ptr  = sncs;
+   codes.resize(code_tab_ptr->n_codes, false);
 
    string elb_re = "\\[ *ELB +samples *= *(?<samples>\\d+) +patterns *= *(?<patterns>\\d+) *\\]";
    string sv_re = "\\[ *SV *(?<sv>( +\\d+)+) *\\]";
    boost::regex  elb_e(elb_re);
    boost::regex  sv_e(sv_re);
    boost::smatch what;
-   int n_patterns;
+   int n_patterns = -1;
    patterns.clear();
    string line;
+   int l = 0;
    bool elb_flag = false, sv_flag = false, patterns_flag = false, scheme_flag = false;
    while ( not scheme_flag and getline(in, line) ){
+      if(debug) cout<<"LINE "<<l<<" = \'"<<line<<"\'"<<endl;
       patterns_flag = ( patterns.size() == n_patterns );
       if(not elb_flag and boost::regex_match(line, what, elb_e)){
          samples = stoi(what["samples"]);
          n_patterns = stoi(what["patterns"]);
          elb_flag = true;
+         if(debug)cout<<"NEW BLOCK: samples = "<<samples<<" patterns = "<<n_patterns<<endl;
       }else if(elb_flag and not sv_flag and boost::regex_match(line, what, sv_e)){
          sv_flag = true;
          //ignore sv at all
-      }else if(elb_flag and not sv_flag and not patterns_flag){
+      }else if(elb_flag and not patterns_flag){
          string pattern = line;
+         //if(debug) cout<<"LINE "<<l<<" = \'"<<line<<"\'"<<endl;
          auto seek_pattern = code_tab_ptr->pattern_to_number.find(pattern);
          if ( seek_pattern == code_tab_ptr->pattern_to_number.end()){
              cerr<<"ERROR: wrong pattern: \'"<<pattern<<"\'"<<endl;
-         }else
+         }else{
              patterns.push_back(code_tab_ptr->pattern_to_number[pattern]);
+             patterns_flag = ( patterns.size() == n_patterns );
+             if(debug)  cout<<"PATTERN_INT= "<<code_tab_ptr->pattern_to_number[pattern]<<endl;
+         }
       }
       scheme_flag = elb_flag and patterns_flag;
+      if (debug){
+          cout<<"elb_flag = "<<elb_flag<<" patterns_flas = "<<patterns_flag<<endl;
+      }
+      l++;
    };
-   Vbool codes(false, code_tab_ptr->n_codes);
+   //Vbool codes(false, code_tab_ptr->n_codes);
+   if (debug) cout<<"check_codes"<<endl;
    good = check_codes();
+   if (debug) cout<<"simplify"<<endl;
    simplify();
 }
 
