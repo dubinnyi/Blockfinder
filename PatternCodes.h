@@ -26,6 +26,7 @@ public:
 	       index of simple_form in unique_simplified_patterns */
     vector <string> unique_simplified_patterns; /* of size n_simplified */
     map <string, int> code_to_number;
+    map <string, int> pattern_to_number;
     vector <int>    simple_multiplicity; /* of size n_simplified */
       /* Number of patterns that are simplified to this simple form
        * The sum of vector elements is equal to n_patterns */

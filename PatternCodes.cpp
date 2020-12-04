@@ -141,6 +141,7 @@ void PatternsCodes::create_simplified_table()
     simple_multiplicity.clear();
     group_pattern_ints.clear();
     group_pattern_text.clear();
+    pattern_to_number.clear();
     
     // fill pattern_ints with sequencial numbers, 
     // the numbers will refer patterns in the 'vector<string> patterns' 
@@ -152,6 +153,7 @@ void PatternsCodes::create_simplified_table()
     int unique_simple_count = -1; /* will be incremented */
     int pattern_simple_int;
     for(int i =0; i<patterns.size(); i++){
+       pattern_to_number[patterns[i]] = i;
        string simple_pattern = simplify_pattern(patterns[i]);
        auto seek_pattern = simplified_map.find(simple_pattern);
        if (seek_pattern == simplified_map.end() ){

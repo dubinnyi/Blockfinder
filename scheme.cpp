@@ -1,5 +1,9 @@
 #include"scheme.h"
 
+using namespace std;
+//using namespace boost;
+
+
 bool operator<(const Scheme& t1, const Scheme& t2) {
     return (t1.simplified < t2.simplified);
 }
@@ -72,6 +76,7 @@ void Scheme::setscheme( PatternsCodes *patternscode , string sname, NCS *sncs, i
 }
 
 
+
 void Scheme::simplify() {
     simplified.assign(code_tab_ptr->n_simplified, 0);
     for (int pattern : patterns) {
@@ -90,6 +95,45 @@ Scheme::Scheme(PatternsCodes *patternscode, string sname, NCS *sncs, int  bsampl
     good = check_codes();
     simplify();
 
+}
+
+
+Scheme::Scheme(PatternsCodes *patternscode, NCS *sncs, ifstream & in){
+   name = "file";
+   code_tab_ptr = patternscode; 
+   ncs_ptr  = sncs;
+
+   string elb_re = "\\[ *ELB +samples *= *(?<samples>\\d+) +patterns *= *(?<patterns>\\d+) *\\]";
+   string sv_re = "\\[ *SV *(?<sv>( +\\d+)+) *\\]";
+   boost::regex  elb_e(elb_re);
+   boost::regex  sv_e(sv_re);
+   boost::smatch what;
+   int n_patterns;
+   patterns.clear();
+   string line;
+   bool elb_flag = false, sv_flag = false, patterns_flag = false, scheme_flag = false;
+   while ( not scheme_flag and getline(in, line) ){
+      patterns_flag = ( patterns.size() == n_patterns );
+      if(not elb_flag and boost::regex_match(line, what, elb_e)){
+         samples = stoi(what["samples"]);
+         n_patterns = stoi(what["patterns"]);
+         elb_flag = true;
+      }else if(elb_flag and not sv_flag and boost::regex_match(line, what, sv_e)){
+         sv_flag = true;
+         //ignore sv at all
+      }else if(elb_flag and not sv_flag and not patterns_flag){
+         string pattern = line;
+         auto seek_pattern = code_tab_ptr->pattern_to_number.find(pattern);
+         if ( seek_pattern == code_tab_ptr->pattern_to_number.end()){
+             cerr<<"ERROR: wrong pattern: \'"<<pattern<<"\'"<<endl;
+         }else
+             patterns.push_back(code_tab_ptr->pattern_to_number[pattern]);
+      }
+      scheme_flag = elb_flag and patterns_flag;
+   };
+   Vbool codes(false, code_tab_ptr->n_codes);
+   good = check_codes();
+   simplify();
 }
 
 

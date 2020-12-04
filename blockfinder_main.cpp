@@ -28,6 +28,8 @@ int main(int argc, char *argv[]) {
    string name_ncs;
    string restart_file;
    bool   restart_flag;
+   string blocks_file;
+   bool   blocks_flag;
    string print_codes_file;
    bool   print_codes_flag;
    bool   dry_run_flag;
@@ -56,6 +58,7 @@ int main(int argc, char *argv[]) {
          ("log-state", po::bool_switch())
          ("dry-run", po::bool_switch(&dry_run_flag),"Make all preparations, do not start BlocFinder for actual calculations")
          ("run-groups", po::bool_switch(&run_groups_flag),"Run blockfinder for each simplified group separately")
+         ("blocks", po::value<string>(&blocks_file), "Blocks file with initial blocks")
          ("list-ncs", "List all supporten NCS")
       ;
       pos_desc.add("NCS", 1)
@@ -117,6 +120,11 @@ int main(int argc, char *argv[]) {
         restart_flag = true;
       else
         restart_flag = false;
+            
+      if( vm.count("blocks") )
+        blocks_flag = true;
+      else
+        blocks_flag = false;
 
             
       if( vm.count("print-codes") )
@@ -164,6 +172,21 @@ int main(int argc, char *argv[]) {
       b.code_table.print_codes(print_codes_file);
       cout<<"Codes are written to file "<<print_codes_file<<endl;
       exit(0);
+   }
+
+   vector<Scheme> initial_blocks;
+   if(blocks_flag){
+      ifstream ifblocks (blocks_file);
+      if (ifblocks.is_open()){
+         while(not ifblocks.eof()){
+             Scheme s(&b.code_table, &ncs, ifblocks);
+             if( s.good )
+                initial_blocks.push_back(s);
+         }
+         cout<<"Blocks read: "<<initial_blocks.size()<<" from file "<<blocks_file<<endl;
+      }else{
+         cerr<<"Could not open file "<<blocks_file<<" for reading"<<endl;
+      }
    }
 
    if(run_groups_flag){
