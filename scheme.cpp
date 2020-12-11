@@ -274,21 +274,17 @@ Scheme_compact::Scheme_compact(Scheme &scheme) {
 
 
 string Scheme_compact::full_str() {
-    string header= "[ELB ";
-    string all_p = "";
-    string sv = "[SV";
-    string s;
+    ostringstream out;
 
-    header = header + "samples = " + to_string(samples) + " patterns = " + to_string(patterns.size()) + "]\n";
+    out<<"[ELB samples = "<<samples<<" patterns = "<<patterns.size()<<" ]"<<endl;
+    out<<"[SV";
     for (int int_simple : simplified) {
-      sv = sv + " "+ to_string(int_simple);
+      out<<" "<<setw(2)<<int_simple;
     }
-    sv = sv + " ]\n";
+    out<<" ]"<<endl;
     for (int i : patterns) {
-        all_p = all_p + code_tab_ptr->patterns[i] + "\n";
+        out<<code_tab_ptr->patterns[i]<<endl;
     }
-    s = header + sv + all_p;
-    //s = header + all_p;
-    return s;
+    return out.str();
 }
 
