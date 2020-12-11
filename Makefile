@@ -22,7 +22,8 @@ SRCS=ncs.cpp \
      blockfinder_main.cpp \
      PatternCodes.cpp \
      tasks.cpp \
-     speedo.cpp
+     speedo.cpp \
+     schemetest.cpp 
 
 DEPFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.d
 COMPILE.cpp = $(CXX) $(DEPFLAGS) $(CXXFLAGS) $(CPPFLAGS) -c

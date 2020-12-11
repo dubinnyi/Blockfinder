@@ -17,6 +17,7 @@ namespace po = boost::program_options;
 #include "ctpl.h"
 #include "blockfinder.h"
 #include "speedo.h"
+#include "schemetest.h"
 
 using namespace std;
 using namespace boost::asio::ip;
@@ -204,6 +205,7 @@ int main(int argc, char *argv[]) {
          cerr<<"Could not open file "<<blocks_file<<" for reading"<<endl;
       }
    }
+   SchemeTest scheme_tester(initial_blocks);
 
    if(run_groups_flag){
       cout<<endl<<"RUN blockfinder for each group separately"<<endl;
