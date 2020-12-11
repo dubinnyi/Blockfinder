@@ -295,6 +295,7 @@ void BlockFinder::maincycle( Task4run & task_for_run   ) {
    int patterns_left;
    int patterns_capacity_left; 
    bool flag_t_free;
+   bool flag_init_blocks;
 
    task = task_for_run;
    check_counter_limits=true;
@@ -334,17 +335,16 @@ void BlockFinder::maincycle( Task4run & task_for_run   ) {
          continue;
       }
       get_next_patterns(*patterns_current_ptr, patterns_left, start_point, next_patterns);
+      flag_init_blocks = true;
       if (scheme_tester) {
-         if (not test_scheme_and_next_patterns(scheme, next_patterns) ){
-            go_back();
-            continue;
-         }
+         flag_init_blocks = test_scheme_and_next_patterns(scheme, next_patterns);
       }
+      
       flag_t_free = true;
       if (check_t_free) {
          flag_t_free = check_have_enought_t_free(scheme, next_patterns);
       }
-      if ( next_patterns.size() != 0 && flag_t_free){
+      if ( next_patterns.size() != 0 and flag_t_free and flag_init_blocks){
          go_deeper(next_patterns);
       }
       else {
