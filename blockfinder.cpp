@@ -21,7 +21,8 @@ BlockFinder::BlockFinder(NCS &bncs, int bsamples):
    task_id(-1),
    depth(0),
    max_depth(0),
-   result_ofstream(NULL) 
+   result_ofstream(NULL),
+   scheme_tester(NULL)
 {};
 
 
@@ -333,6 +334,12 @@ void BlockFinder::maincycle( Task4run & task_for_run   ) {
          continue;
       }
       get_next_patterns(*patterns_current_ptr, patterns_left, start_point, next_patterns);
+      if (scheme_tester) {
+         if (not test_scheme_and_next_patterns(scheme, next_patterns) ){
+            go_back();
+            continue;
+         }
+      }
       flag_t_free = true;
       if (check_t_free) {
          flag_t_free = check_have_enought_t_free(scheme, next_patterns);
@@ -461,6 +468,19 @@ void BlockFinder::create_tasks() {
 }
 
 
+bool BlockFinder::test_scheme_and_next_patterns(
+    Scheme & scheme, vector<int> & next_patterns)
+{
+  if (not scheme_tester ){
+     return true;
+  }else{
+     vector<int> test_vec = scheme.simplified;
+     for (int pattern : next_patterns){
+        test_vec[code_table.simple_ints[pattern]]++;
+     }
+     return( scheme_tester->check(test_vec) );
+  }
+}
 
 
 bool BlockFinder::check_counters_reached_the_end_of_task(){

@@ -198,14 +198,26 @@ int main(int argc, char *argv[]) {
              }
          }
          cout<<"Initial blocks: read "<<initial_blocks.size()<<" blocks from file "<<blocks_file<<endl;
-         //for(SchemeCompact read_scheme : initial_blocks){
-         //   cout<<read_scheme.full_str();
-         //}
+         int ischeme = 0;
+         for(Scheme_compact read_scheme : initial_blocks){
+            if (ischeme < 15) {
+               for (int int_simple : read_scheme.simplified) {
+                  cout<<" "<<setw(2)<<int_simple;
+               }
+            }else{
+               cout<<" .... "<<endl;
+            }
+            cout<<endl;
+            //cout<eread_scheme.full_str();
+         }
       }else{
          cerr<<"Could not open file "<<blocks_file<<" for reading"<<endl;
       }
    }
    SchemeTest scheme_tester(initial_blocks);
+   if(blocks_flag){
+      blockfinder.scheme_tester = & scheme_tester; 
+   }
 
    if(run_groups_flag){
       cout<<endl<<"RUN blockfinder for each group separately"<<endl;
