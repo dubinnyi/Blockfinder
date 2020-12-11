@@ -15,7 +15,8 @@ class SchemeTest {
 private:
    int Lsize;
    int Hsize;
-   boost::dynamic_bitset<> booldata[Vsize][24];
+   vector<int> maxval;
+   vector< vector< boost::dynamic_bitset<> > > booldata;
 public:
     SchemeTest(const vector<Scheme_compact>& v);
     bool check(const Scheme_compact& val)const;
