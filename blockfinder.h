@@ -46,8 +46,10 @@ public:
   bool check_t_free;
   bool check_counter_limits;
   int  min_t_free = -1;
-  bool run_task_flag;     /* true after recover_from_counters           */
-  bool create_task_flag;  /* true if tasks are created                */
+  bool run_task_flag;       // true after recover_from_counters           
+  bool create_task_flag;    // true if tasks are created                
+  bool dry_table_flag;      // Dry table in generate_initial_patterns? Defined in option --dry-table
+  bool sort_patterns_flag;  // Sort patterns in generate_initial_patterns? Defined in option --sort-patterns
   string results_filename;
   ofstream *result_ofstream;
   vector <int> counter = {}; //temporary
@@ -60,6 +62,8 @@ public:
   map <unsigned long long, set< Scheme_compact>> result;//soe
   PatternsCodes code_table;
   int index_of_type_T;
+  void setup_blockfinder();
+  //void setup_code_table(CodeTable & ctable);
   vector <string> generate_all_text_patterns(int  samples, bool top = true);
   void generate_initial_patterns(vector<string> & p_text);
   void open_files();
@@ -84,7 +88,9 @@ public:
   void save_result();
   void find_schemes();
 
-  BlockFinder(int bsamples, NCS &bncs, int bmin_depth, int bmin_t_free, 
+  BlockFinder(NCS &bncs, int bsamples); 
+
+  BlockFinder(NCS &bncs, int bsamples, int bmin_depth, int bmin_t_free, 
                     PatternsCodes & patternscode, bool generation=true );
         //bfm? 
 };

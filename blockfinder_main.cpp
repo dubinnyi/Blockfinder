@@ -34,6 +34,8 @@ int main(int argc, char *argv[]) {
    bool   print_codes_flag;
    bool   dry_run_flag;
    bool   run_groups_flag;
+   bool   no_dry_table_flag;
+   bool   sort_alpha_flag;
    NCS ncs;
    int samples, min_depth, parallel_depth, task_size;
    int auto_min_t_free = -1;
@@ -58,6 +60,8 @@ int main(int argc, char *argv[]) {
          ("log-state", po::bool_switch())
          ("dry-run", po::bool_switch(&dry_run_flag),"Make all preparations, do not start BlocFinder for actual calculations")
          ("run-groups", po::bool_switch(&run_groups_flag),"Run blockfinder for each simplified group separately")
+         ("no-dry-table", po::bool_switch(&no_dry_table_flag),"Do not dry table of codes to exclude useless patterns")
+         ("sort-alpha", po::bool_switch(&sort_alpha_flag),"Sort patterns alphabetically (not recommended)")
          ("blocks", po::value<string>(&blocks_file), "Blocks file with initial blocks")
          ("list-ncs", "List all supporten NCS")
       ;
@@ -164,9 +168,16 @@ int main(int argc, char *argv[]) {
 
 
    PatternsCodes empty_table;
-   BlockFinder blockfinder(samples, ncs, min_depth, auto_min_t_free, empty_table);
+//   BlockFinder blockfinder(samples, ncs, min_depth, auto_min_t_free, empty_table);
+   BlockFinder blockfinder(ncs, samples);
+
+   blockfinder.min_depth = min_depth;
    blockfinder.parallel_depth = parallel_depth;
    blockfinder.task_size = task_size;
+   blockfinder.dry_table_flag = ( not no_dry_table_flag );
+   blockfinder.sort_patterns_flag = ( not sort_alpha_flag );
+   blockfinder.min_t_free = auto_min_t_free; 
+   blockfinder.setup_blockfinder();
 
    if(print_codes_flag){
       blockfinder.code_table.print_codes(print_codes_file);
@@ -199,7 +210,7 @@ int main(int argc, char *argv[]) {
       Task4run group_task; // default task, runs all iterations
       for(int group=0; group<blockfinder.code_table.n_simplified; group++){
          int group_min_depth = 2;
-         BlockFinder bgroup(samples, ncs, group_min_depth, auto_min_t_free, empty_table);
+         BlockFinder bgroup(ncs, samples, group_min_depth, auto_min_t_free, empty_table);
          bgroup.generate_initial_patterns(blockfinder.code_table.group_pattern_text[group]);
          group_task.name = blockfinder.code_table.unique_simplified_patterns[group];
          cout<<endl<<endl<<"RUN group "<<group<<" "<<group_task.name<<endl<<endl<<endl;

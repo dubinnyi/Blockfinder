@@ -7,7 +7,42 @@
 // instance of static private member
 std::mutex cout_locker::mtx;
 
-BlockFinder::BlockFinder( int bsamples, NCS &bncs, int bmin_depth, int bmin_t_free, PatternsCodes &patternscode, bool generation):
+BlockFinder::BlockFinder(NCS &bncs, int bsamples):
+   ncs(bncs),
+   samples(bsamples),
+   min_depth(-1),
+   min_t_free(-1),
+   check_t_free(false),
+   create_task_flag(false),
+   run_task_flag(false),
+   check_counter_limits(false),
+   dry_table_flag(true),
+   sort_patterns_flag(true),
+   task_id(-1),
+   depth(0),
+   max_depth(0),
+   result_ofstream(NULL) 
+{};
+
+
+void BlockFinder::setup_blockfinder(){
+   if (min_t_free >= 0) {
+      check_t_free = true;
+      index_of_type_T = ncs.index_of_labeltype('T');
+   } 
+   if (min_depth <= 1) {
+       min_depth = 2;
+   }
+
+   patterns_text = generate_all_text_patterns(samples);
+   generate_initial_patterns(patterns_text);
+   counter.clear();
+   counter.push_back(0); 
+   scheme.setscheme(&code_table,"1", &ncs, samples, {});
+}
+
+
+BlockFinder::BlockFinder(NCS &bncs, int bsamples, int bmin_depth, int bmin_t_free, PatternsCodes &patternscode, bool generation):
    samples(bsamples),
    ncs(bncs),
    min_depth(bmin_depth),
@@ -16,9 +51,14 @@ BlockFinder::BlockFinder( int bsamples, NCS &bncs, int bmin_depth, int bmin_t_fr
    create_task_flag(false),
    run_task_flag(false),
    check_counter_limits(false),
+   dry_table_flag(true),
+   sort_patterns_flag(true),
    task_id(-1),
    depth(0),
-   max_depth(0)
+   max_depth(0),
+   result_ofstream(NULL)  // will be initiated in start_blockfinder() 
+                           // and deleted in blockfinder_finished()
+
 {
    if (min_t_free >= 0) {
       check_t_free = true;
@@ -36,13 +76,6 @@ BlockFinder::BlockFinder( int bsamples, NCS &bncs, int bmin_depth, int bmin_t_fr
       code_table= patternscode;
    }
    scheme.setscheme(&code_table,"1", &bncs, samples, {});
-   
-   speedo_results.clear();
-   speedo_codes.clear();
-   speedo_iterations.clear();
-//   ofstream 
-   result_ofstream = NULL; // will be initiated in start_blockfinder() 
-                           // and deleted in blockfinder_finished()
 }
 
 
@@ -54,23 +87,12 @@ void  find_schemes(int id, BlockFinder & b, Task4run & task_for_run) {
 }
 
 
-/*void find_schemes_long ( int id,  int bsamples, NCS &bncs, int bmin_depth, int bmin_t_free, PatternsCodes &patternscode, 
-                    vector<string> &patterns_text, vector <int> &patterns_ints, Task4run & task_for_run, cout_locker *cl) {
-
-    BlockFinder b (bsamples, bncs, bmin_depth, bmin_t_free, patternscode, false )   ;
-    b.cout_lock = cl;
-    b.patterns_text=patterns_text;
-    b.patterns.push_back(patterns_ints);
-    b.recover_from_counters(task_for_run);
-    b.maincycle(task_for_run);
-}*/
-
-
 void BlockFinder::generate_initial_patterns(vector<string> &p_text){
-   bool dry_table = true;
-   bool sort_patterns =true;
+   bool dry_table = dry_table_flag;
+   bool sort_patterns = sort_patterns_flag;
    bool debug = false;
 
+   cout<<"generate initial patterns with options: dry_table = "<<dry_table<<", sort_patterns = "<<sort_patterns<<endl;
    patterns_text = p_text;
    code_table.setPatternsCodes(patterns_text, ncs);
    patterns.clear();
@@ -226,6 +248,11 @@ int index_of_type(labeltype label_type) {
 
 
 void BlockFinder::start_blockfinder() {
+
+   speedo_results.clear();
+   speedo_codes.clear();
+   speedo_iterations.clear();
+   
    cout_lock->lock();
    if(!run_task_flag){
      if (check_t_free) {
