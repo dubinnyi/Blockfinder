@@ -14,11 +14,11 @@ BlockFinder::BlockFinder( int bsamples, NCS &bncs, int bmin_depth, int bmin_t_fr
    min_t_free(bmin_t_free),
    check_t_free(false),
    create_task_flag(false),
+   run_task_flag(false),
    check_counter_limits(false),
    task_id(-1),
    depth(0),
-   max_depth(0),
-   out1("")
+   max_depth(0)
 {
    if (min_t_free >= 0) {
       check_t_free = true;
@@ -40,11 +40,21 @@ BlockFinder::BlockFinder( int bsamples, NCS &bncs, int bmin_depth, int bmin_t_fr
    speedo_results.clear();
    speedo_codes.clear();
    speedo_iterations.clear();
-
+//   ofstream 
+   result_ofstream = NULL; // will be initiated in start_blockfinder() 
+                           // and deleted in blockfinder_finished()
 }
 
 
-void find_schemes ( int id,  int bsamples, NCS &bncs, int bmin_depth, int bmin_t_free, PatternsCodes &patternscode, 
+void  find_schemes(int id, BlockFinder & b, Task4run & task_for_run) {
+
+   BlockFinder task_bf(b);
+   task_bf.recover_from_counters(task_for_run);
+   task_bf.maincycle(task_for_run);
+}
+
+
+/*void find_schemes_long ( int id,  int bsamples, NCS &bncs, int bmin_depth, int bmin_t_free, PatternsCodes &patternscode, 
                     vector<string> &patterns_text, vector <int> &patterns_ints, Task4run & task_for_run, cout_locker *cl) {
 
     BlockFinder b (bsamples, bncs, bmin_depth, bmin_t_free, patternscode, false )   ;
@@ -53,7 +63,7 @@ void find_schemes ( int id,  int bsamples, NCS &bncs, int bmin_depth, int bmin_t
     b.patterns.push_back(patterns_ints);
     b.recover_from_counters(task_for_run);
     b.maincycle(task_for_run);
-}
+}*/
 
 
 void BlockFinder::generate_initial_patterns(vector<string> &p_text){
@@ -220,26 +230,25 @@ void BlockFinder::start_blockfinder() {
    if(!run_task_flag){
      if (check_t_free) {
         cout << "Started maincycle. Samples =" << samples << " min depth = " << min_depth << " min_t_free=" << min_t_free << endl; 
-        out1 = "started samples =" + to_string(samples) + " min depth = " + to_string(min_depth) + " min_t_free=" + to_string(min_t_free);
      }
      else {
-        out1 = "Started maincycle. Samples =" + to_string(samples) + " min depth = " + to_string(min_depth);
         cout << "started samples =" << samples << " min depth = " << min_depth << endl;
      }
      cout << " Total number of patterns is  " << patterns[0].size() << endl;
    }
+   result_ofstream = new ofstream(); // delete in blockfinder_finished
    if(run_task_flag){
      results_filename = ncs.name + "_"+to_string(samples)+"_"+to_string(min_depth)+"_"+task.name+"_cpp.elb";
-     result_ofstream.open(results_filename);
+     result_ofstream->open(results_filename);
      run_name = "[" + task.name + "]";
    }else{
-     results_filename = ncs.name + "_" + to_string(samples) + "_" + to_string(min_depth) + "_cpp.elb";
-     result_ofstream.open(results_filename);
+     //results_filename = ncs.name + "_" + to_string(samples) + "_" + to_string(min_depth) + "_cpp.elb";
+     //result_ofstream->open(results_filename);
      run_name = "[BlockFinder"+to_string(samples)+"]";
    }
-   if(result_ofstream.is_open()){
-      result_ofstream << "[NCS = " << ncs.name << "]"<<endl<< "[Deuterated = " << (ncs.deuterated?"True":"False")<< "]"<<endl;
-      result_ofstream.flush();
+   if(result_ofstream->is_open()){
+      (*result_ofstream) << "[NCS = " << ncs.name << "]"<<endl<< "[Deuterated = " << (ncs.deuterated?"True":"False")<< "]"<<endl;
+      result_ofstream->flush();
    }else{
       cout<<"No file to save results for run "<<run_name<<"results_filename= "<<results_filename<<endl;
    }
@@ -312,9 +321,8 @@ void BlockFinder::maincycle( Task4run & task_for_run   ) {
       }
       check_max_depth();
    }
-   cout_lock->lock();
-   cout<< run_name<<" finished task "<<to_string(task_id)<<" after "<<speedo_iterations<< " iterations"<<endl;
-   cout_lock->unlock();
+
+   blockfinder_finished();
 }
 
 
@@ -420,6 +428,8 @@ void BlockFinder::create_tasks() {
    }
    file1.close();
 
+   blockfinder_finished();
+
    cout<< "create_tasks: Finished after "<<speedo_iterations<< " iterations"<<", "<<tasks.size()<<" tasks generated"<<endl;
 }
 
@@ -472,7 +482,7 @@ void BlockFinder::recover_from_counters( const vector <int> & recover_counters, 
 
    depth = recover_counters.size()-1;
    counter=recover_counters;
-   if(result_ofstream.is_open())result_ofstream.close();
+   //if(result_ofstream->is_open())result_ofstream->close();
    run_task_flag = true;
    task_id = numbertask;
 }
@@ -503,11 +513,11 @@ void BlockFinder::next_iteration_output(){
       
       cout << log.str() << endl;
      
-      if(result_ofstream.is_open())result_ofstream.flush();
+      if(result_ofstream and  result_ofstream->is_open())
+         result_ofstream->flush();
       speedo_iterations.check_point();
       speedo_codes.check_point();
       cout_lock->unlock();
-
     }
 }
 
@@ -515,8 +525,6 @@ void BlockFinder::next_iteration_output(){
 void BlockFinder::check_max_depth(){
    if (depth > max_depth){
       max_depth = depth;
-//      out1 = "[BlockFinder" + to_string(samples) + " ] New max depth:" + to_string(max_depth); 
-//      cout<<out1<<endl;
    }
 } 
 
@@ -616,11 +624,29 @@ void BlockFinder::save_result() {
 
 void BlockFinder:: blockfinder_finished() {
    cout_lock->lock();
-   out1 = "[BlockFinder] finished search in" + to_string(samples) + "samples after " + 
+   string out = "[BlockFinder] finished search in" + to_string(samples) + "samples after " + 
      to_string(speedo_iterations.counter) + " iterations and " + 
      to_string(speedo_codes.counter) + " codes checked. " + 
      to_string(speedo_results.counter) + " ELB schemes found";
+
+   if(run_task_flag){
+       cout<< run_name<<" finished task "<<to_string(task_id);
+   } else {
+       cout<<"[BlockFinder] finished";
+   }
+   speedo_iterations.stop();
+   cout<<" after "<<speedo_iterations<< " iterations and "<<
+     speedo_iterations.wall_time<<" seconds, "<<
+     speedo_codes<< " codes checked, "<<
+     speedo_results<< " ELB schemes found"<<endl;
    cout_lock->unlock();
+
+   if (result_ofstream){
+      if (result_ofstream->is_open() ){
+        result_ofstream->close();
+      }
+      delete result_ofstream;
+   }
 }
 
 
@@ -711,9 +737,9 @@ tuple<int, int > PatternsCodes::count_type_in_list_of_patterns(
 void  BlockFinder::write_result(Scheme_compact  new_scheme) {
 //   results_found = results_found + 1;
    speedo_results++;
-   if(result_ofstream.is_open()){
-      result_ofstream << "# iterator = " <<speedo_iterations << endl;
-      result_ofstream << new_scheme.full_str()<<endl;
-      //result_ofstream.flush();
+   if(result_ofstream and result_ofstream->is_open()){
+      (*result_ofstream) << "# iterator = " <<speedo_iterations << endl;
+      (*result_ofstream) << new_scheme.full_str()<<endl;
+      //(*result_ofstream).flush();
    }
 }

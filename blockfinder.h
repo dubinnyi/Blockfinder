@@ -49,7 +49,7 @@ public:
   bool run_task_flag;     /* true after recover_from_counters           */
   bool create_task_flag;  /* true if tasks are created                */
   string results_filename;
-  ofstream result_ofstream;
+  ofstream *result_ofstream;
   vector <int> counter = {}; //temporary
   vector <Scheme> back_up_schemes = {};
 	
@@ -60,30 +60,29 @@ public:
   map <unsigned long long, set< Scheme_compact>> result;//soe
   PatternsCodes code_table;
   int index_of_type_T;
-  string out1;
   vector <string> generate_all_text_patterns(int  samples, bool top = true);
   void generate_initial_patterns(vector<string> & p_text);
   void open_files();
   void start_blockfinder();
+  void blockfinder_finished();
   void maincycle( Task4run & task_for_run  );
   void recover_from_counters( const Task4run &task_for_run );
   void recover_from_counters( const vector<int> &current_counters, int numbertask=-1);
   bool check_counters_reached_the_end_of_task();
 
   void next_iteration_output();
-  void go_back();
-  void save_result();
   bool check_have_enought_t_free(const Scheme & scheme, const vector<int> & patterns_left);
   void write_result(Scheme_compact  new_scheme);
   void get_next_patterns(vector <int> & patterns, int patterns_left, int start_point, 
                             vector<int> &result);
   void get_next_patterns_speedo(vector <int> & patterns, int patterns_left, int start_point, 
                             vector<int> &result);
+  void go_back();
   void go_deeper(const vector <int> & next_patterns);
   void go_parallel();
   void check_max_depth();
+  void save_result();
   void find_schemes();
-  void blockfinder_finished();
 
   BlockFinder(int bsamples, NCS &bncs, int bmin_depth, int bmin_t_free, 
                     PatternsCodes & patternscode, bool generation=true );
@@ -91,9 +90,12 @@ public:
 };
 
 
-void find_schemes (int id,   int bsamples, NCS &bncs, int bmin_depth, int bmin_t_free, 
+
+void find_schemes(int id,  BlockFinder & b, Task4run & task_for_run);
+
+/*void find_schemes_long(int id,   int bsamples, NCS &bncs, int bmin_depth, int bmin_t_free, 
                     PatternsCodes &patternscode, vector <string> &patterns_text, 
-                    vector <int> &patterns_ints, Task4run & task_for_run, cout_locker  *cl);
+                    vector <int> &patterns_ints, Task4run & task_for_run, cout_locker  *cl);*/
 
 
 void find (const BlockFinder b);
