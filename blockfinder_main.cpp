@@ -169,7 +169,6 @@ int main(int argc, char *argv[]) {
 
 
    PatternsCodes empty_table;
-//   BlockFinder blockfinder(samples, ncs, min_depth, auto_min_t_free, empty_table);
    BlockFinder blockfinder(ncs, samples);
 
    blockfinder.min_depth = min_depth;
@@ -188,35 +187,16 @@ int main(int argc, char *argv[]) {
 
    vector<Scheme_compact> initial_blocks;
    if(blocks_flag){
-      ifstream ifblocks (blocks_file);
-      if (ifblocks.is_open()){
-         while(not ifblocks.eof()){
-             Scheme s(&blockfinder.code_table, &ncs, ifblocks);
-             if( s.good and s.patterns.size() ){
-                Scheme_compact sc(s);
-                initial_blocks.push_back(sc);
-             }
-         }
-         cout<<"Initial blocks: read "<<initial_blocks.size()<<" blocks from file "<<blocks_file<<endl;
-         int ischeme = 0;
-         for(Scheme_compact read_scheme : initial_blocks){
-            if (ischeme < 15) {
-               for (int int_simple : read_scheme.simplified) {
-                  cout<<" "<<setw(2)<<int_simple;
-               }
-            }else{
-               cout<<" .... "<<endl;
-            }
-            cout<<endl;
-            //cout<eread_scheme.full_str();
-         }
-      }else{
-         cerr<<"Could not open file "<<blocks_file<<" for reading"<<endl;
-      }
+      read_blocks_from_file(&blockfinder.code_table, &ncs, blocks_file, initial_blocks, true);
    }
    SchemeTest scheme_tester(initial_blocks);
    if(blocks_flag){
       blockfinder.scheme_tester = & scheme_tester; 
+      cout<<"Self-test of the initial blocks:"<<endl;
+      for(auto scheme : initial_blocks){
+         bool result = scheme_tester.check(scheme.simplified);
+         cout<<scheme.simplified_vector_string()<<" -- "<<(result?"True":"False")<<endl;
+      }
    }
 
    if(run_groups_flag){

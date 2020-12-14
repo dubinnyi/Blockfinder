@@ -328,7 +328,7 @@ void BlockFinder::maincycle( Task4run & task_for_run   ) {
          continue;
       }
       if (patterns_left == 0) {
-         if (scheme.patterns.size() >= min_depth) {
+         if (scheme.patterns.size() >= min_depth and test_scheme(scheme) ) {
             save_result();
          }
          go_back();
@@ -348,7 +348,7 @@ void BlockFinder::maincycle( Task4run & task_for_run   ) {
          go_deeper(next_patterns);
       }
       else {
-         if (scheme.patterns.size() >= min_depth) {
+         if (scheme.patterns.size() >= min_depth and test_scheme(scheme)) {
             save_result();
          }
          go_parallel(); 
@@ -468,8 +468,18 @@ void BlockFinder::create_tasks() {
 }
 
 
+bool BlockFinder::test_scheme(const Scheme & s)
+{
+   if (not scheme_tester ){
+      return true;
+   }else{
+      return ( scheme_tester->check(s.simplified) );
+   }
+}
+
+
 bool BlockFinder::test_scheme_and_next_patterns(
-    Scheme & scheme, vector<int> & next_patterns)
+    const Scheme & scheme, const vector<int> & next_patterns)
 {
   if (not scheme_tester ){
      return true;

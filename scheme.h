@@ -90,9 +90,12 @@ public:
 	void sort();
 
 	string full_str();
+  string simplified_vector_string();
 
 };
 bool operator==(const Scheme_compact& s1, const Scheme_compact& t2);
 bool operator<(const Scheme_compact& t1, const Scheme_compact& t2);
+
+void read_blocks_from_file(PatternsCodes *patternscode, NCS *sncs, string file, vector<Scheme_compact> & out, bool debug);
 
 #endif

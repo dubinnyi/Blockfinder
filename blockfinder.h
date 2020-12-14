@@ -77,7 +77,8 @@ public:
   bool check_counters_reached_the_end_of_task();
 
   void next_iteration_output();
-  bool test_scheme_and_next_patterns(Scheme & scheme, vector<int> & next_patterns);
+  bool test_scheme(const Scheme & s);
+  bool test_scheme_and_next_patterns(const Scheme & scheme, const vector<int> & next_patterns);
   bool check_have_enought_t_free(const Scheme & scheme, const vector<int> & patterns_left);
   void write_result(Scheme_compact  new_scheme);
   void get_next_patterns(vector <int> & patterns, int patterns_left, int start_point, 

@@ -272,19 +272,55 @@ Scheme_compact::Scheme_compact(Scheme &scheme) {
 }
 
 
+string Scheme_compact::simplified_vector_string(){
+   ostringstream out;
+   for (int int_simple : simplified) {
+      out<<" "<<setw(2)<<int_simple;
+   }
+   return out.str();
+}
+
 
 string Scheme_compact::full_str() {
     ostringstream out;
 
     out<<"[ELB samples = "<<samples<<" patterns = "<<patterns.size()<<" ]"<<endl;
-    out<<"[SV";
-    for (int int_simple : simplified) {
-      out<<" "<<setw(2)<<int_simple;
-    }
-    out<<" ]"<<endl;
+    out<<"[SV"<<simplified_vector_string()<<" ]"<<endl;
     for (int i : patterns) {
         out<<code_tab_ptr->patterns[i]<<endl;
     }
     return out.str();
 }
 
+
+void read_blocks_from_file(PatternsCodes *patternscode, NCS *sncs, string file, vector<Scheme_compact> & out_blocks, bool debug=false){
+   out_blocks.clear();
+   ifstream ifblocks (file);
+   if (ifblocks.is_open()){
+      while(not ifblocks.eof()){
+         Scheme s(patternscode, sncs, ifblocks);
+         if( s.good and s.patterns.size() ){
+             Scheme_compact sc(s);
+             out_blocks.push_back(sc);
+         }
+      }
+      if(debug){
+         cout<<"read_blocks_from_file: read "<<out_blocks.size()<<" blocks from file "<<file<<endl;
+         int ischeme = 0;
+         for(Scheme_compact read_scheme : out_blocks){
+            if (ischeme < 25) {
+               for (int int_simple : read_scheme.simplified) {
+                  cout<<" "<<setw(2)<<int_simple;
+               }
+            }else{
+               cout<<" .... "<<endl;
+            }
+            cout<<endl;
+            ischeme++;
+            //cout<eread_scheme.full_str();
+         }
+      }
+   }else{
+      cerr<<"Could not open file "<<file<<" for reading"<<endl;
+   }
+}
