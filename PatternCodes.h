@@ -23,12 +23,23 @@ public:
     vector <string> simple_label; /* of size n_simplified */
     vector <int>    pattern_ints; /* of size n_patterns, actually 0, 1, 2, .... n_patterns -1 */
     vector <int>    simple_ints;  /* of size n_patterns, 
-	 index of simple_form in unique_simplified_patterns */
+	       index of simple_form in unique_simplified_patterns */
     vector <string> unique_simplified_patterns; /* of size n_simplified */
     map <string, int> code_to_number;
+    map <string, int> pattern_to_number;
     vector <int>    simple_multiplicity; /* of size n_simplified */
       /* Number of patterns that are simplified to this simple form
        * The sum of vector elements is equal to n_patterns */
+    vector < vector <int> >    group_pattern_ints;  /* of size n_simplified */
+    vector < vector <string> > group_pattern_text;  /* of size n_simplified */
+      /* Patterns in each groups as separate vector */
+    vector <int>    group_rank;  /* of size n_simplified */
+      // group rank = 1 or 2
+      // group rank = 1 means than only one element from group could be
+      // taken for the scheme building
+      // group rank = 2 means that more then 2 elenemts could be taken
+    vector <int>    pattern_rank;  /* of size n_patterns */
+      // pattern rank is the rank of the pattern group
 
     valarray<bitset<N_LABELTYPES> > have_labeltype_simplified_flag; /* of size n_simplified */
     valarray<bitset<N_LABELTYPES> > have_labeltype_pattern_flag;    /* of size n_patterns */
@@ -61,11 +72,13 @@ public:
     void count_different_codes_in_vector(const vector <int> &  patterns, vector <size_t> &n_diff_raw, vector <size_t> &n_diff_col);
     void count_pairwise_compatible(const vector <int> & patterns, int p, size_t & n_compat, Vbool & compat);
     void count_pairwise_compatible(const vector <int> & patterns, vector< size_t> & n_compat);
+    int patterns_capacity_rank_correction(vector <int> & pints, int start_point);
     
 private:
     void create_simplified_table();
     void create_labeltype_flags();
     void create_codes_table();
+    void calculate_group_ranks();
 };
 
 

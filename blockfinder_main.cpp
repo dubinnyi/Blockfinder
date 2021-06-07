@@ -17,6 +17,7 @@ namespace po = boost::program_options;
 #include "ctpl.h"
 #include "blockfinder.h"
 #include "speedo.h"
+#include "schemetest.h"
 
 using namespace std;
 using namespace boost::asio::ip;
@@ -28,9 +29,14 @@ int main(int argc, char *argv[]) {
    string name_ncs;
    string restart_file;
    bool   restart_flag;
+   string blocks_file;
+   bool   blocks_flag;
    string print_codes_file;
    bool   print_codes_flag;
    bool   dry_run_flag;
+   bool   run_groups_flag;
+   bool   no_dry_table_flag;
+   bool   sort_alpha_flag;
    NCS ncs;
    int samples, min_depth, parallel_depth, task_size;
    int auto_min_t_free = -1;
@@ -48,12 +54,16 @@ int main(int argc, char *argv[]) {
          ("min-patterns", po::value<int>(&min_depth), "Minimal number of patterns in scheme, e.g. 3")
          ("ncpu,n", po::value<unsigned int>(&ncpu)->default_value(ncpu_onboard), "Number of CPU to use")
          ("parallel-depth,d", po::value<int>(&parallel_depth)->default_value(1), "Execute in parallel from that depth")
-         ("task-size,t", po::value<int>(&task_size)->default_value(200), "The size of task to be executed in parallel")
+         ("task-size,task", po::value<int>(&task_size)->default_value(200), "The size of task to be executed in parallel")
          ("restart", po::value<string>(&restart_file), "Restart file with unfinished tasks, e.g. \"restart.txt\". The file is created by python script viewrun.txt")
          ("print-codes", po::value<string>(&print_codes_file), "Print codes to separate file")
          ("log-speed", po::bool_switch())
          ("log-state", po::bool_switch())
          ("dry-run", po::bool_switch(&dry_run_flag),"Make all preparations, do not start BlocFinder for actual calculations")
+         ("run-groups", po::bool_switch(&run_groups_flag),"Run blockfinder for each simplified group separately")
+         ("no-dry-table", po::bool_switch(&no_dry_table_flag),"Do not dry table of codes to exclude useless patterns")
+         ("sort-alpha", po::bool_switch(&sort_alpha_flag),"Sort patterns alphabetically (not recommended)")
+         ("blocks", po::value<string>(&blocks_file), "Blocks file with initial blocks")
          ("list-ncs", "List all supporten NCS")
       ;
       pos_desc.add("NCS", 1)
@@ -115,6 +125,11 @@ int main(int argc, char *argv[]) {
         restart_flag = true;
       else
         restart_flag = false;
+            
+      if( vm.count("blocks") )
+        blocks_flag = true;
+      else
+        blocks_flag = false;
 
             
       if( vm.count("print-codes") )
@@ -154,23 +169,58 @@ int main(int argc, char *argv[]) {
 
 
    PatternsCodes empty_table;
-   BlockFinder b(samples, ncs, min_depth, auto_min_t_free, empty_table);
-   b.parallel_depth = parallel_depth;
-   b.task_size = task_size;
+   BlockFinder blockfinder(ncs, samples);
+
+   blockfinder.min_depth = min_depth;
+   blockfinder.parallel_depth = parallel_depth;
+   blockfinder.task_size = task_size;
+   blockfinder.dry_table_flag = ( not no_dry_table_flag );
+   blockfinder.sort_patterns_flag = ( not sort_alpha_flag );
+   blockfinder.min_t_free = auto_min_t_free; 
+   blockfinder.setup_blockfinder();
 
    if(print_codes_flag){
-      b.code_table.print_codes(print_codes_file);
+      blockfinder.code_table.print_codes(print_codes_file);
       cout<<"Codes are written to file "<<print_codes_file<<endl;
       exit(0);
    }
 
+   vector<Scheme_compact> initial_blocks;
+   if(blocks_flag){
+      read_blocks_from_file(&blockfinder.code_table, &ncs, blocks_file, initial_blocks, true);
+   }
+   SchemeTest scheme_tester(initial_blocks);
+   if(blocks_flag){
+      blockfinder.scheme_tester = & scheme_tester; 
+      //cout<<"Self-test of the initial blocks:"<<endl;
+      for(auto scheme : initial_blocks){
+         bool result = scheme_tester.check(scheme.simplified);
+         //cout<<scheme.simplified_vector_string()<<" -- "<<(result?"True":"False")<<endl;
+      }
+   }
+
+   if(run_groups_flag){
+      cout<<endl<<"RUN blockfinder for each group separately"<<endl;
+      Task4run group_task; // default task, runs all iterations
+      for(int group=0; group<blockfinder.code_table.n_simplified; group++){
+         int group_min_depth = 2;
+         BlockFinder bgroup(ncs, samples, group_min_depth, auto_min_t_free, empty_table);
+         bgroup.generate_initial_patterns(blockfinder.code_table.group_pattern_text[group]);
+         group_task.name = blockfinder.code_table.unique_simplified_patterns[group];
+         cout<<endl<<endl<<"RUN group "<<group<<" "<<group_task.name<<endl<<endl<<endl;
+         bgroup.run_task_flag = true;
+         bgroup.task_id = group;
+         bgroup.maincycle(group_task);
+      }
+   }
+
    cout<<"CREATE TASKS STARTED "<<endl;
-   b.create_tasks();
-   cout<<"CREATE TASKS FINISHED. "<<to_string(b.tasks.size())<<" TASKS CREATED"<<endl;
+   blockfinder.create_tasks();
+   cout<<"CREATE TASKS FINISHED. "<<to_string(blockfinder.tasks.size())<<" TASKS CREATED"<<endl;
 
    vector<Task4run> run_tasks(0);
    if(!restart_flag){
-      run_tasks = b.tasks;
+      run_tasks = blockfinder.tasks;
    }else{
       cout<<endl;
       cout<<"RESTART FILE "<<restart_file<<" WILL BE USED TO RUN UNFINISHED TASKS ONLY"<<endl;
@@ -179,29 +229,29 @@ int main(int argc, char *argv[]) {
       if (restart.is_open()) {
         int i=0;
         while ( getline (restart,  line) ){
-          if(i<b.tasks.size()){
+          if(i<blockfinder.tasks.size()){
             Task4run restart_task(line);
-	    int task_number = restart_task.number;
-	    if(task_number >= b.tasks.size()){
+       int task_number = restart_task.number;
+       if(task_number >= blockfinder.tasks.size()){
               cerr<<line<<endl;
-	      cerr<<"   Error: task number "<<task_number<<
-		          " is out of range: "<<b.tasks.size()<<endl;
-	      i++;
-	      continue;
-	    }
-	    Task4run generated_task = b.tasks[restart_task.number];
-	    if(! ( restart_task == generated_task) ){
-	      cerr<<line<<endl;
-	      cerr<<"  -- Tasks do not match! "<<endl;
-	      cerr<<"    restart_task ="<<  (string)restart_task<<endl;
-	      cerr<<"  generated_task ="<< (string)generated_task<<endl;
-	    }else{
-	      run_tasks.push_back(restart_task);
-	      if (i<10){
-	         cout<<line<<"  -- OK"<<endl;
-	      }
-	      if(i==10)cout<<"..."<<endl;
-	    }
+         cerr<<"   Error: task number "<<task_number<<
+                " is out of range: "<<blockfinder.tasks.size()<<endl;
+         i++;
+         continue;
+       }
+       Task4run generated_task = blockfinder.tasks[restart_task.number];
+       if(! ( restart_task == generated_task) ){
+         cerr<<line<<endl;
+         cerr<<"  -- Tasks do not match! "<<endl;
+         cerr<<"    restart_task ="<<  (string)restart_task<<endl;
+         cerr<<"  generated_task ="<< (string)generated_task<<endl;
+       }else{
+         run_tasks.push_back(restart_task);
+         if (i<10){
+            cout<<line<<"  -- OK"<<endl;
+         }
+         if(i==10)cout<<"..."<<endl;
+       }
           }
           i++;
         }
@@ -210,7 +260,7 @@ int main(int argc, char *argv[]) {
         cout <<" UNABLE TO OPEN FILE "<<restart_file<<endl;
 
         cout<<"RESTART FILE '"<<restart_file<<"' PARSED, "<<
-        run_tasks.size()<<" TAKS OF " <<b.tasks.size()<<" ARE READY FOR RESTART"<<endl;
+        run_tasks.size()<<" TAKS OF " <<blockfinder.tasks.size()<<" ARE READY FOR RESTART"<<endl;
      //exit(1);
    }
 
@@ -230,8 +280,9 @@ int main(int argc, char *argv[]) {
    cout<<"RUNNING ALL "<<to_string(run_tasks.size())<<" IN PARALLEL ON "<<to_string(p.size())<<" THREADS"<<endl;
 
    cout_locker Cout_Lock;
-   for (Task4run t : run_tasks){
-      p.push(find_schemes, samples, ncs, min_depth, auto_min_t_free, b.code_table, b.patterns_text, b.patterns[0], t, & Cout_Lock);
+   blockfinder.cout_lock = & Cout_Lock;
+   for (Task4run task : run_tasks){
+      p.push(find_schemes, blockfinder, task);
       numbertask=numbertask+1;
    }
 

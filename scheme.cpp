@@ -1,5 +1,9 @@
 #include"scheme.h"
 
+using namespace std;
+//using namespace boost;
+
+
 bool operator<(const Scheme& t1, const Scheme& t2) {
     return (t1.simplified < t2.simplified);
 }
@@ -72,6 +76,7 @@ void Scheme::setscheme( PatternsCodes *patternscode , string sname, NCS *sncs, i
 }
 
 
+
 void Scheme::simplify() {
     simplified.assign(code_tab_ptr->n_simplified, 0);
     for (int pattern : patterns) {
@@ -90,6 +95,65 @@ Scheme::Scheme(PatternsCodes *patternscode, string sname, NCS *sncs, int  bsampl
     good = check_codes();
     simplify();
 
+}
+
+
+Scheme::Scheme(PatternsCodes *patternscode, NCS *sncs, ifstream & in){
+   bool debug = false;
+
+   name = "file";
+   code_tab_ptr = patternscode; 
+   ncs_ptr  = sncs;
+   codes.resize(code_tab_ptr->n_codes, false);
+
+   string elb_re = "\\[ *ELB +samples *= *(?<samples>\\d+) +patterns *= *(?<patterns>\\d+) *\\]";
+   string sv_re = "\\[ *SV *(?<sv>( +\\d+)+) *\\]";
+   boost::regex  elb_e(elb_re);
+   boost::regex  sv_e(sv_re);
+   boost::smatch what;
+   int n_patterns = -1;
+   int read_pattern_lines = 0;
+   patterns.clear();
+   string line;
+   int l = 0;
+   bool elb_flag = false, sv_flag = false, patterns_flag = false, scheme_flag = false;
+   while ( not scheme_flag and getline(in, line) ){
+      if(debug) cout<<"LINE "<<l<<" = \'"<<line<<"\'"<<endl;
+      patterns_flag = ( patterns.size() == n_patterns );
+      if(not elb_flag and boost::regex_match(line, what, elb_e)){
+         samples = stoi(what["samples"]);
+         n_patterns = stoi(what["patterns"]);
+         read_pattern_lines = 0;
+         elb_flag = true;
+         if(debug)cout<<"NEW BLOCK: samples = "<<samples<<" patterns = "<<n_patterns<<endl;
+      }else if(elb_flag and not sv_flag and boost::regex_match(line, what, sv_e)){
+         sv_flag = true;
+         //ignore sv at all
+      }else if(elb_flag and not patterns_flag){
+         string pattern = line;
+         //if(debug) cout<<"LINE "<<l<<" = \'"<<line<<"\'"<<endl;
+         auto seek_pattern = code_tab_ptr->pattern_to_number.find(pattern);
+         read_pattern_lines++;
+         if ( seek_pattern == code_tab_ptr->pattern_to_number.end()){
+             cerr<<"ERROR: wrong pattern: \'"<<pattern<<"\'"<<endl;
+         }else{
+             patterns.push_back(code_tab_ptr->pattern_to_number[pattern]);
+//             patterns_flag = ( patterns.size() == n_patterns );
+             patterns_flag = ( read_pattern_lines == n_patterns );
+             if(debug)  cout<<"PATTERN_INT= "<<code_tab_ptr->pattern_to_number[pattern]<<endl;
+         }
+      }
+      scheme_flag = elb_flag and patterns_flag;
+      if (debug){
+          cout<<"elb_flag = "<<elb_flag<<" patterns_flas = "<<patterns_flag<<endl;
+      }
+      l++;
+   };
+   //Vbool codes(false, code_tab_ptr->n_codes);
+   if (debug) cout<<"check_codes"<<endl;
+   good = check_codes();
+   if (debug) cout<<"simplify"<<endl;
+   simplify();
 }
 
 
@@ -212,23 +276,55 @@ Scheme_compact::Scheme_compact(Scheme &scheme) {
 }
 
 
-
-string Scheme_compact::full_str() {
-    string header= "[ELB ";
-    string all_p = "";
-    string sv = "[SV";
-    string s;
-
-    header = header + "samples = " + to_string(samples) + " patterns = " + to_string(patterns.size()) + "]\n";
-    for (int int_simple : simplified) {
-      sv = sv + " "+ to_string(int_simple);
-    }
-    sv = sv + " ]\n";
-    for (int i : patterns) {
-        all_p = all_p + code_tab_ptr->patterns[i] + "\n";
-    }
-    s = header + sv + all_p;
-    //s = header + all_p;
-    return s;
+string Scheme_compact::simplified_vector_string(){
+   ostringstream out;
+   for (int int_simple : simplified) {
+      out<<" "<<setw(2)<<int_simple;
+   }
+   return out.str();
 }
 
+
+string Scheme_compact::full_str() {
+    ostringstream out;
+
+    out<<"[ELB samples = "<<samples<<" patterns = "<<patterns.size()<<" ]"<<endl;
+    out<<"[SV"<<simplified_vector_string()<<" ]"<<endl;
+    for (int i : patterns) {
+        out<<code_tab_ptr->patterns[i]<<endl;
+    }
+    return out.str();
+}
+
+
+void read_blocks_from_file(PatternsCodes *patternscode, NCS *sncs, string file, vector<Scheme_compact> & out_blocks, bool debug=false){
+   out_blocks.clear();
+   ifstream ifblocks (file);
+   if (ifblocks.is_open()){
+      while(not ifblocks.eof()){
+         Scheme s(patternscode, sncs, ifblocks);
+         if( s.good and s.patterns.size() ){
+             Scheme_compact sc(s);
+             out_blocks.push_back(sc);
+         }
+      }
+      if(debug){
+         cout<<"read_blocks_from_file: read "<<out_blocks.size()<<" blocks from file "<<file<<endl;
+         int ischeme = 0;
+         for(Scheme_compact read_scheme : out_blocks){
+            if (ischeme < 25) {
+               for (int int_simple : read_scheme.simplified) {
+                  cout<<" "<<setw(2)<<int_simple;
+               }
+               cout<<endl;
+            }else if (ischeme == 25){
+               cout<<" .... "<<endl;
+            }
+            ischeme++;
+            //cout<eread_scheme.full_str();
+         }
+      }
+   }else{
+      cerr<<"Could not open file "<<file<<" for reading"<<endl;
+   }
+}

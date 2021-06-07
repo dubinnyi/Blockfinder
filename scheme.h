@@ -2,11 +2,19 @@
 #ifndef SPEEDO_H_INCLUDED
 #define SPEEDO_H_INCLUDED
 
+#include <vector>
+#include <boost/regex.hpp>
+#include <iomanip>
+#include <iostream>
+#include <fstream>
+#include <sstream>
+
 #include "ncs.h"
 #include "speedo.h"
 #include <stdexcept>
 #include "PatternCodes.h"
-#include <vector>
+
+
 
 /*
 #ifdef __AVX512__
@@ -50,6 +58,7 @@ public:
 	Scheme();
 	Scheme(PatternsCodes *patternscode, string sname , NCS *sncs, 
             int bsamples=0, vector<int> bpatterns = {});
+	Scheme(PatternsCodes *patternscode, NCS *sncs, ifstream& in);
 
 	bool check_codes();
 	void simplify();
@@ -81,9 +90,12 @@ public:
 	void sort();
 
 	string full_str();
+  string simplified_vector_string();
 
 };
 bool operator==(const Scheme_compact& s1, const Scheme_compact& t2);
 bool operator<(const Scheme_compact& t1, const Scheme_compact& t2);
+
+void read_blocks_from_file(PatternsCodes *patternscode, NCS *sncs, string file, vector<Scheme_compact> & out, bool debug);
 
 #endif

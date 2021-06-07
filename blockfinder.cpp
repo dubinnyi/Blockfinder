@@ -7,18 +7,59 @@
 // instance of static private member
 std::mutex cout_locker::mtx;
 
-BlockFinder::BlockFinder( int bsamples, NCS &bncs, int bmin_depth, int bmin_t_free, PatternsCodes &patternscode, bool generation):
+BlockFinder::BlockFinder(NCS &bncs, int bsamples):
+   ncs(bncs),
+   samples(bsamples),
+   min_depth(-1),
+   min_t_free(-1),
+   check_t_free(false),
+   create_task_flag(false),
+   run_task_flag(false),
+   check_counter_limits(false),
+   dry_table_flag(true),
+   sort_patterns_flag(true),
+   task_id(-1),
+   depth(0),
+   max_depth(0),
+   result_ofstream(NULL),
+   scheme_tester(NULL)
+{};
+
+
+void BlockFinder::setup_blockfinder(){
+   if (min_t_free >= 0) {
+      check_t_free = true;
+      index_of_type_T = ncs.index_of_labeltype('T');
+   } 
+   if (min_depth <= 1) {
+       min_depth = 2;
+   }
+
+   patterns_text = generate_all_text_patterns(samples);
+   generate_initial_patterns(patterns_text);
+   counter.clear();
+   counter.push_back(0); 
+   scheme.setscheme(&code_table,"1", &ncs, samples, {});
+}
+
+
+BlockFinder::BlockFinder(NCS &bncs, int bsamples, int bmin_depth, int bmin_t_free, PatternsCodes &patternscode, bool generation):
    samples(bsamples),
    ncs(bncs),
    min_depth(bmin_depth),
    min_t_free(bmin_t_free),
    check_t_free(false),
    create_task_flag(false),
+   run_task_flag(false),
    check_counter_limits(false),
+   dry_table_flag(true),
+   sort_patterns_flag(true),
    task_id(-1),
    depth(0),
    max_depth(0),
-   out1("")
+   result_ofstream(NULL)  // will be initiated in start_blockfinder() 
+                           // and deleted in blockfinder_finished()
+
 {
    if (min_t_free >= 0) {
       check_t_free = true;
@@ -36,106 +77,132 @@ BlockFinder::BlockFinder( int bsamples, NCS &bncs, int bmin_depth, int bmin_t_fr
       code_table= patternscode;
    }
    scheme.setscheme(&code_table,"1", &bncs, samples, {});
-   
-   speedo_results.clear();
-   speedo_codes.clear();
-   speedo_iterations.clear();
-
 }
 
 
-void find_schemes ( int id,  int bsamples, NCS &bncs, int bmin_depth, int bmin_t_free, PatternsCodes &patternscode, 
-                    vector<string> &patterns_text, vector <int> &patterns_ints, Task4run & task_for_run, cout_locker *cl) {
+void  find_schemes(int id, BlockFinder & b, Task4run & task_for_run) {
 
-    BlockFinder b (bsamples, bncs, bmin_depth, bmin_t_free, patternscode, false )   ;
-    b.cout_lock = cl;
-    b.patterns_text=patterns_text;
-    b.patterns.push_back(patterns_ints);
-    b.recover_from_counters(task_for_run);
-    b.maincycle(task_for_run);
+   BlockFinder task_bf(b);
+   task_bf.recover_from_counters(task_for_run);
+   task_bf.maincycle(task_for_run);
 }
 
 
 void BlockFinder::generate_initial_patterns(vector<string> &p_text){
-  
+   bool dry_table = dry_table_flag;
+   bool sort_patterns = sort_patterns_flag;
+   bool debug = true;
 
+   cout<<"generate initial patterns with options: dry_table = "<<dry_table<<", sort_patterns = "<<sort_patterns<<endl;
    patterns_text = p_text;
    code_table.setPatternsCodes(patterns_text, ncs);
+   patterns.clear();
+   patterns.push_back(code_table.pattern_ints);
+   
    cout << "Code Table generated, " << code_table.n_patterns <<
            " patterns, " << code_table.n_simplified << " simplified" << endl;
    
    cout<<"List of unique simplified patterns with multiplicities:"<<endl;
    code_table.print_simplified_patterns(cout);
 
-   //cout<<"CODES"<<endl;
-   //code_table.print_codes(cout);
-   //cout<<endl;
-   vector<size_t> n_diff_row, n_diff_col, n_compat;
-   cout<<"START THE CODE TABLE DRYING"<<endl;
-   cout<<"Calculate different codes in each row and column (ROWS and COLS below)"<<endl;
-   code_table.count_different_codes_in_vector(code_table.pattern_ints, n_diff_row, n_diff_col);
+   if (dry_table or sort_patterns) {
+     //cout<<"CODES"<<endl;
+     //code_table.print_codes(cout);
+     //cout<<endl;
+     vector<size_t> n_diff_row, n_diff_col, n_compat;
+     vector<int> group_simple_ints = code_table.simple_ints;
+     if(debug){
+        cout<<"START THE CODE TABLE DRYING AND/OR SORTING"<<endl;
+        cout<<"Calculate different codes in each row and column (ROWS and COLS below)"<<endl;
+     }
+     code_table.count_different_codes_in_vector(code_table.pattern_ints, n_diff_row, n_diff_col);
 
-   cout<<"Calculate number of campatible patterns for each pattern using pairwise checking (#Compat)"<<endl;
-   code_table.count_pairwise_compatible(code_table.pattern_ints, n_compat);
+     if(debug)
+        cout<<"Calculate number of campatible patterns for each pattern using pairwise checking (#Compat)"<<endl;
+     code_table.count_pairwise_compatible(code_table.pattern_ints, n_compat);
 
-   cout<<"Sorting all patterns by #Compat"<<endl;
-   vector<size_t> p(n_compat.size());
-   iota(p.begin(), p.end(), 0);
-   sort(p.begin(), p.end(), [&n_compat](const size_t a, const size_t b){ return (n_compat[a] < n_compat[b]) ; } );
-//   auto p  = sort_permutation(n_compat, [&n_compat](const size_t &a, const size_t &b){ return (n_compat[a] > n_compat[b]); } );
+     vector<string> patterns_text_sorted = p_text;
+     vector<int> prank = code_table.pattern_rank;
 
-   apply_permutation_in_place(patterns_text, p);
-   apply_permutation_in_place(n_diff_row, p);
-   apply_permutation_in_place(n_diff_col, p);
-   apply_permutation_in_place(n_compat, p);
-   
-   Vbool n_codes_Ok(false, code_table.n_patterns);
-   Vbool n_compat_Ok(false, code_table.n_patterns);
-   Vbool pattern_Ok(false, code_table.n_patterns);
+     if(sort_patterns){
+        if(debug){
+           cout<<"SORTING ALL PATTERNS BY RANK, #COMPAT, GROUP AND TEXT"<<endl;
+        }
+        vector<size_t> p(n_compat.size());
+        iota(p.begin(), p.end(), 0);
+        vector<int> & si = code_table.simple_ints;
+        vector<string> & pt = patterns_text_sorted;
+        sort(p.begin(), p.end(), [&prank, &n_compat, &si, &pt](const size_t a, const size_t b){ 
+            return (
+               prank[a] <  prank[b] or 
+               prank[a] == prank[b] and n_compat[a] <  n_compat[b] or 
+               prank[a] == prank[b] and n_compat[a] == n_compat[b] and si[a] <  si[b] or 
+               prank[a] == prank[b] and n_compat[a] == n_compat[b] and si[a] == si[b] and pt[a] < pt[b]) ; 
+            } );
+        //   auto p  = sort_permutation(n_compat, [&n_compat](const size_t &a, const size_t &b){ return (n_compat[a] > n_compat[b]); } );
 
-   vector<string> filtered_patterns_text;
-   int n_filtered = 0;
-   for(int i=0; i<code_table.n_patterns; i++){
-      if( n_diff_row[i]>=min_depth and n_diff_col[i]>= min_depth ){
-         n_codes_Ok[i] = true;
-      }
-      if( n_compat[i]>= min_depth ){
-         n_compat_Ok[i] = true;
-      }
-      if( n_codes_Ok[i] and n_compat_Ok[i]){
-         pattern_Ok[i] = true;
-         filtered_patterns_text.push_back(patterns_text[i]);
-         n_filtered++;
-      }
+        //vector<string> patterns_text_sorted = apply_permutation(patterns_text, p);
+        apply_permutation_in_place(prank, p);
+        apply_permutation_in_place(patterns_text_sorted, p);
+        apply_permutation_in_place(group_simple_ints, p);
+        apply_permutation_in_place(n_diff_row, p);
+        apply_permutation_in_place(n_diff_col, p);
+        apply_permutation_in_place(n_compat, p);
+     }
+     
+     Vbool n_codes_Ok(false, code_table.n_patterns);
+     Vbool n_compat_Ok(false, code_table.n_patterns);
+     Vbool pattern_Ok(false, code_table.n_patterns);
+
+     vector<string> filtered_patterns_text;
+     int n_filtered = 0;
+     if(dry_table){
+        if(debug){
+           cout<<"DRY TABLE: exclude all patterns with only one different code in row or col"<<endl;
+        }
+
+        for(int i=0; i<code_table.n_patterns; i++){
+           if( n_diff_row[i]>=min_depth and n_diff_col[i]>= min_depth ){
+              n_codes_Ok[i] = true;
+           }
+           if( n_compat[i]>= min_depth ){
+              n_compat_Ok[i] = true;
+           }
+           if( n_codes_Ok[i] and n_compat_Ok[i]){
+              pattern_Ok[i] = true;
+              filtered_patterns_text.push_back(patterns_text_sorted[i]);
+              n_filtered++;
+           }
+        }
+     }else{
+        filtered_patterns_text = patterns_text_sorted;
+        n_filtered = patterns_text_sorted.size();
+     }
+
+     if(debug){
+        cout<<setw(4)<<"#"<<" "<<setw(code_table.n_samples)<<"PAT"<<" ";
+        cout<<setw(3)<<"GR"<<" "<<setw(4)<<"RANK"<<" "<<setw(4)<<"ROWS"<<" "<<setw(4)<<"COLS"<<" ";
+        cout<<setw(6)<<"Codes?"<<" "<<setw(7)<<"#Compat"<<" "<<setw(7)<<"Compat?"<<" "<<setw(6)<<"Pattern?";
+        cout<<endl;
+        for(int i=0; i<code_table.n_patterns;i++){
+           cout<<setw(4)<<i<<" "<<patterns_text_sorted[i]<<" "<<setw(3)<<group_simple_ints[i]<<" ";
+           cout<<setw(4)<<prank[i]<<" ";
+           cout<<setw(4)<<n_diff_row[i]<<" "<<setw(4)<<n_diff_col[i]<<" ";
+           cout<<setw(6)<<(n_codes_Ok[i]?"Ok":"!!!")<<" ";
+           cout<<setw(7)<<(n_compat[i])<<" ";
+           cout<<setw(7)<<(n_compat_Ok[i]?"Ok":"!!!")<<" ";
+           cout<<setw(6)<<(pattern_Ok[i]?"Ok":"!!!")<<" ";
+           cout<<endl;
+        };
+
+        cout<<"n_filtered = "<<n_filtered<<", n_patterns = "<<code_table.n_patterns<<endl;
+     }
+     if(filtered_patterns_text != p_text){
+        cout<<endl<<"The list of patterns was changed."<<endl;
+        cout<<"RECURSIVELY CALL GENERATE_INITIAL_PATTERNS"<<endl<<endl;
+        generate_initial_patterns(filtered_patterns_text);
+     }
    }
-
-   cout<<setw(4)<<"#"<<" "<<setw(code_table.n_samples)<<"PAT"<<" ";
-   cout<<setw(3)<<"GR"<<" "<<setw(4)<<"ROWS"<<" "<<setw(4)<<"COLS"<<" ";
-   cout<<setw(6)<<"Codes?"<<" "<<setw(7)<<"#Compat"<<" "<<setw(7)<<"Compat?"<<" "<<setw(6)<<"Pattern?";
-   cout<<endl;
-   for(int i=0; i<code_table.n_patterns;i++){
-      cout<<setw(4)<<i<<" "<<code_table.patterns[i]<<" "<<setw(3)<<code_table.simple_ints[i]<<" ";
-      cout<<setw(4)<<n_diff_row[i]<<" "<<setw(4)<<n_diff_col[i]<<" ";
-      cout<<setw(6)<<(n_codes_Ok[i]?"Ok":"!!!")<<" ";
-      cout<<setw(7)<<(n_compat[i])<<" ";
-      cout<<setw(7)<<(n_compat_Ok[i]?"Ok":"!!!")<<" ";
-      cout<<setw(6)<<(pattern_Ok[i]?"Ok":"!!!")<<" ";
-      cout<<endl;
-   };
-
-   cout<<"n_filtered = "<<n_filtered<<", n_patterns = "<<code_table.n_patterns<<endl;
-   if(n_filtered < code_table.n_patterns){
-      cout<<endl<<"RECURSIVELY CALL GENERATE_INITIAL_PATTERNS"<<endl<<endl;
-      generate_initial_patterns(filtered_patterns_text);
-   }else{
-      code_table.setPatternsCodes(patterns_text, ncs);
-      cout << "Sorted code table is generated, " << code_table.n_patterns <<
-           " patterns, " << code_table.n_simplified << " simplified" << endl;
-   }
-
-   patterns.clear();
-   patterns.push_back(code_table.pattern_ints);
-
 }
 
 
@@ -182,30 +249,34 @@ int index_of_type(labeltype label_type) {
 
 
 void BlockFinder::start_blockfinder() {
+
+   speedo_results.clear();
+   speedo_codes.clear();
+   speedo_iterations.clear();
+   
    cout_lock->lock();
    if(!run_task_flag){
      if (check_t_free) {
         cout << "Started maincycle. Samples =" << samples << " min depth = " << min_depth << " min_t_free=" << min_t_free << endl; 
-        out1 = "started samples =" + to_string(samples) + " min depth = " + to_string(min_depth) + " min_t_free=" + to_string(min_t_free);
      }
      else {
-        out1 = "Started maincycle. Samples =" + to_string(samples) + " min depth = " + to_string(min_depth);
         cout << "started samples =" << samples << " min depth = " << min_depth << endl;
      }
      cout << " Total number of patterns is  " << patterns[0].size() << endl;
    }
+   result_ofstream = new ofstream(); // delete in blockfinder_finished
    if(run_task_flag){
      results_filename = ncs.name + "_"+to_string(samples)+"_"+to_string(min_depth)+"_"+task.name+"_cpp.elb";
-     result_ofstream.open(results_filename);
+     result_ofstream->open(results_filename);
      run_name = "[" + task.name + "]";
    }else{
-     results_filename = ncs.name + "_" + to_string(samples) + "_" + to_string(min_depth) + "_cpp.elb";
-     result_ofstream.open(results_filename);
+     //results_filename = ncs.name + "_" + to_string(samples) + "_" + to_string(min_depth) + "_cpp.elb";
+     //result_ofstream->open(results_filename);
      run_name = "[BlockFinder"+to_string(samples)+"]";
    }
-   if(result_ofstream.is_open()){
-      result_ofstream << "[NCS = " << ncs.name << "]"<<endl<< "[Deuterated = " << (ncs.deuterated?"True":"False")<< "]"<<endl;
-      result_ofstream.flush();
+   if(result_ofstream->is_open()){
+      (*result_ofstream) << "[NCS = " << ncs.name << "]"<<endl<< "[Deuterated = " << (ncs.deuterated?"True":"False")<< "]"<<endl;
+      result_ofstream->flush();
    }else{
       cout<<"No file to save results for run "<<run_name<<"results_filename= "<<results_filename<<endl;
    }
@@ -221,8 +292,10 @@ void BlockFinder::maincycle( Task4run & task_for_run   ) {
    vector<int> *patterns_current_ptr; 
    vector <int> next_patterns;
    int start_point;
-   int patterns_left; 
+   int patterns_left;
+   int patterns_capacity_left; 
    bool flag_t_free;
+   bool flag_init_blocks;
 
    task = task_for_run;
    check_counter_limits=true;
@@ -245,98 +318,109 @@ void BlockFinder::maincycle( Task4run & task_for_run   ) {
       }
       start_point = 1 + counter[depth];
       patterns_left = patterns_current_ptr->size() - start_point;
+      patterns_capacity_left = code_table.patterns_capacity_rank_correction(*patterns_current_ptr, start_point);
       //
       // The scheme is copied
       back_up_schemes.push_back(scheme);
       scheme.add_pattern((*patterns_current_ptr)[counter[depth]]);
-      if (patterns_left < (min_depth - depth - 1)   ) {
+      if (patterns_capacity_left < (min_depth - depth - 1)   ) {
          go_back();
          continue;
       }
       if (patterns_left == 0) {
-         if (scheme.patterns.size() >= min_depth) {
+         if (scheme.patterns.size() >= min_depth and test_scheme(scheme) ) {
             save_result();
          }
          go_back();
          continue;
       }
       get_next_patterns(*patterns_current_ptr, patterns_left, start_point, next_patterns);
+      flag_init_blocks = true;
+      if (scheme_tester) {
+         flag_init_blocks = test_scheme_and_next_patterns(scheme, next_patterns);
+      }
+      
       flag_t_free = true;
       if (check_t_free) {
          flag_t_free = check_have_enought_t_free(scheme, next_patterns);
       }
-      if ( next_patterns.size() != 0 && flag_t_free){
+      if ( next_patterns.size() != 0 and flag_t_free and flag_init_blocks){
          go_deeper(next_patterns);
       }
       else {
-         if (scheme.patterns.size() >= min_depth) {
+         if (scheme.patterns.size() >= min_depth and test_scheme(scheme)) {
             save_result();
          }
          go_parallel(); 
       }
       check_max_depth();
    }
-   cout_lock->lock();
-   cout<< run_name<<" finished task "<<to_string(task_id)<<" after "<<speedo_iterations<< " iterations"<<endl;
-   cout_lock->unlock();
+
+   blockfinder_finished();
 }
 
 
 void BlockFinder::create_tasks() {
-    vector<int> patternscurrent, next_patterns;
-    int start_point;
-    int patterns_left;
-    bool flag_t_free;
+   vector<int> *patterns_current_ptr;
+   vector<int> next_patterns;
+   int start_point;
+   int patterns_left;
+   int patterns_capacity_left; 
+   bool flag_init_blocks;
+   bool flag_t_free;
 
-    create_task_flag = true;
-    int task_counter = 0;
-    int task_number  = 0;
-    cout<<"create_tasks: Starting with parallel_depth= "<<parallel_depth<<" and task_size= "<<task_size<<endl;
+   create_task_flag = true;
+   int task_counter = 0;
+   int task_number  = 0;
+   cout<<"create_tasks: Starting with parallel_depth= "<<parallel_depth<<" and task_size= "<<task_size<<endl;
 
-    vector <Task4run> t;
-    Task4run task1;
-    task1.start={0};
-    task1.number = task_number;
-    task1.update_name();
-    task1.end={};
-    tasks.push_back(task1);
-    task_number++;
+   vector <Task4run> t;
+   Task4run task1;
+   task1.start={0};
+   task1.number = task_number;
+   task1.update_name();
+   task1.end={};
+   tasks.push_back(task1);
+   task_number++;
 
-    int kt=0;
-    start_blockfinder();
+   int kt=0;
+   start_blockfinder();
 
-    while (true) {
+   while (true) {
 
         next_iteration_output();
 
-        patternscurrent = patterns[depth];
-        if (depth == 0 && ( (counter[0] + min_depth )> patternscurrent.size())) {
+        patterns_current_ptr = &(patterns[depth]);
+        if (depth == 0 && ( (counter[0] + min_depth )> patterns_current_ptr->size())) {
             break;
         }
         start_point = 1 + counter[depth];
-        patterns_left = patternscurrent.size() - start_point;
+        patterns_left = patterns_current_ptr->size() - start_point;
+        patterns_capacity_left = code_table.patterns_capacity_rank_correction(*patterns_current_ptr, start_point);
 
         back_up_schemes.push_back(scheme);
 
-        scheme.add_pattern(patternscurrent[counter[depth]]);
-        if (patterns_left < (min_depth - depth - 1)   ) {
+        scheme.add_pattern((*patterns_current_ptr)[counter[depth]]);
+        if (patterns_capacity_left < (min_depth - depth - 1)   ) {
             go_back();
             continue;
         }
         if (patterns_left == 0) {
-            if (scheme.patterns.size() >= min_depth) {
-                save_result();
-            }
             go_back();
             continue;
         }
-        get_next_patterns(patternscurrent, patterns_left, start_point, next_patterns);
+        get_next_patterns(*patterns_current_ptr, patterns_left, start_point, next_patterns);
+
+        flag_init_blocks = true;
+        if (scheme_tester) {
+           flag_init_blocks = test_scheme_and_next_patterns(scheme, next_patterns);
+        }
 
         flag_t_free = true;
         if (check_t_free) {
             flag_t_free = check_have_enought_t_free(scheme, next_patterns);
         }
-        if ( next_patterns.size() != 0 && flag_t_free){
+        if ( next_patterns.size() != 0 && flag_t_free && flag_init_blocks){
 
             if(depth == parallel_depth){
 
@@ -356,15 +440,12 @@ void BlockFinder::create_tasks() {
 
                 go_parallel();
             }
-            if(depth<parallel_depth){
+            if(depth < parallel_depth){
                 go_deeper(next_patterns);
             }
 
         }
         else {
-            if (scheme.patterns.size() >= min_depth) {
-                save_result();
-            }
             go_parallel();
         }
         check_max_depth();
@@ -381,7 +462,34 @@ void BlockFinder::create_tasks() {
    }
    file1.close();
 
+   blockfinder_finished();
+
    cout<< "create_tasks: Finished after "<<speedo_iterations<< " iterations"<<", "<<tasks.size()<<" tasks generated"<<endl;
+}
+
+
+bool BlockFinder::test_scheme(const Scheme & s)
+{
+   if (not scheme_tester ){
+      return true;
+   }else{
+      return ( scheme_tester->check(s.simplified) );
+   }
+}
+
+
+bool BlockFinder::test_scheme_and_next_patterns(
+    const Scheme & scheme, const vector<int> & next_patterns)
+{
+  if (not scheme_tester ){
+     return true;
+  }else{
+     vector<int> test_vec = scheme.simplified;
+     for (int pattern : next_patterns){
+        test_vec[code_table.simple_ints[pattern]]++;
+     }
+     return( scheme_tester->check(test_vec) );
+  }
 }
 
 
@@ -431,7 +539,7 @@ void BlockFinder::recover_from_counters( const vector <int> & recover_counters, 
 
    depth = recover_counters.size()-1;
    counter=recover_counters;
-   if(result_ofstream.is_open())result_ofstream.close();
+   //if(result_ofstream->is_open())result_ofstream->close();
    run_task_flag = true;
    task_id = numbertask;
 }
@@ -462,11 +570,11 @@ void BlockFinder::next_iteration_output(){
       
       cout << log.str() << endl;
      
-      if(result_ofstream.is_open())result_ofstream.flush();
+      if(result_ofstream and  result_ofstream->is_open())
+         result_ofstream->flush();
       speedo_iterations.check_point();
       speedo_codes.check_point();
       cout_lock->unlock();
-
     }
 }
 
@@ -474,8 +582,6 @@ void BlockFinder::next_iteration_output(){
 void BlockFinder::check_max_depth(){
    if (depth > max_depth){
       max_depth = depth;
-//      out1 = "[BlockFinder" + to_string(samples) + " ] New max depth:" + to_string(max_depth); 
-//      cout<<out1<<endl;
    }
 } 
 
@@ -518,7 +624,7 @@ void BlockFinder::go_parallel(){
 
 
 
-void BlockFinder::go_deeper(vector <int> next_patterns) {
+void BlockFinder::go_deeper(const vector <int> & next_patterns) {
    patterns.push_back(next_patterns);
    counter.push_back(0);
    depth = depth + 1;
@@ -543,7 +649,13 @@ void BlockFinder::save_result() {
    vector<int> empty_vec = {};
    if (check_t_free && !(check_have_enought_t_free(scheme, empty_vec))) {
       return; 
-   }
+   };
+   if( not scheme.check_codes()){
+      cout_lock->lock();
+      cerr<<"check_codes failed for the scheme found!"<<endl;
+      cerr<<scheme.full_str();
+      cout_lock->unlock();
+   };
    int depth_of_scheme;
    depth_of_scheme= scheme.patterns.size();
    Scheme_compact new_scheme;
@@ -569,11 +681,29 @@ void BlockFinder::save_result() {
 
 void BlockFinder:: blockfinder_finished() {
    cout_lock->lock();
-   out1 = "[BlockFinder] finished search in" + to_string(samples) + "samples after " + 
+   string out = "[BlockFinder] finished search in" + to_string(samples) + "samples after " + 
      to_string(speedo_iterations.counter) + " iterations and " + 
      to_string(speedo_codes.counter) + " codes checked. " + 
      to_string(speedo_results.counter) + " ELB schemes found";
+
+   if(run_task_flag){
+       cout<< run_name<<" finished task "<<to_string(task_id);
+   } else {
+       cout<<"[BlockFinder] finished";
+   }
+   speedo_iterations.stop();
+   cout<<" after "<<speedo_iterations<< " iterations and "<<
+     speedo_iterations.wall_time<<" seconds, "<<
+     speedo_codes<< " codes checked, "<<
+     speedo_results<< " ELB schemes found"<<endl;
    cout_lock->unlock();
+
+   if (result_ofstream){
+      if (result_ofstream->is_open() ){
+        result_ofstream->close();
+      }
+      delete result_ofstream;
+   }
 }
 
 
@@ -664,9 +794,9 @@ tuple<int, int > PatternsCodes::count_type_in_list_of_patterns(
 void  BlockFinder::write_result(Scheme_compact  new_scheme) {
 //   results_found = results_found + 1;
    speedo_results++;
-   if(result_ofstream.is_open()){
-      result_ofstream << "# iterator = " <<speedo_iterations << endl;
-      result_ofstream << new_scheme.full_str()<<endl;
-      //result_ofstream.flush();
+   if(result_ofstream and result_ofstream->is_open()){
+      (*result_ofstream) << "# iterator = " <<speedo_iterations << endl;
+      (*result_ofstream) << new_scheme.full_str()<<endl;
+      //(*result_ofstream).flush();
    }
 }

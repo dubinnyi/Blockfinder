@@ -19,13 +19,31 @@ PatternsCodes::PatternsCodes( vector<string> a_patterns, NCS a_ncs      ){
     create_simplified_table();
     create_labeltype_flags();
     create_codes_table();
-
+    calculate_group_ranks();
 }
 
 PatternsCodes::PatternsCodes() {
     patterns={};
     n_patterns = 0;
     n_samples = 0;
+}
+
+
+void PatternsCodes::setPatternsCodes(vector<string> a_patterns, NCS a_ncs ) {
+
+    patterns=a_patterns;
+    n_patterns = patterns.size();
+    if(n_patterns > 0 )
+      n_samples = patterns[0].length();
+    else
+      n_samples = 0;
+    
+    ncs = a_ncs;
+
+    create_simplified_table();
+    create_labeltype_flags();
+    create_codes_table();  
+    calculate_group_ranks();
 }
 
 
@@ -104,30 +122,14 @@ void PatternsCodes::print_codes(ostream &out){
 
 
 void PatternsCodes::print_simplified_patterns(ostream &out){
-   out<< "    # "<<setw(n_samples)<<"GR"<<" "<<setw(ncs.label_types.size())<<"LAB"<<" "<<setw(4)<<"MULT"<<endl;
+   out<< "    # "<<setw(n_samples)<<"GR"<<" "<<setw(ncs.label_types.size())<<"LAB"<<" "<<setw(4)<<"MULT"<<" "<<setw(4)<<"RANK"<<endl;
    for(int s=0; s<n_simplified ; s++){
       out<<"   "<<setw(2)<<s<<" "<<unique_simplified_patterns[s]<<" ";
       out<<simple_label[s];
-      out<<" "<<setw(4)<<simple_multiplicity[s]<<endl;
+      out<<" "<<setw(4)<<simple_multiplicity[s];
+      out<<" "<<setw(4)<<group_rank[s]<<endl;
    }
 };
-
-
-void PatternsCodes::setPatternsCodes(vector<string> a_patterns, NCS a_ncs ) {
-
-    patterns=a_patterns;
-    n_patterns = patterns.size();
-    if(n_patterns > 0 )
-      n_samples = patterns[0].length();
-    else
-      n_samples = 0;
-    
-    ncs = a_ncs;
-
-    create_simplified_table();
-    create_labeltype_flags();
-    create_codes_table();
-}
 
 
 void PatternsCodes::create_simplified_table()
@@ -137,6 +139,9 @@ void PatternsCodes::create_simplified_table()
     unique_simplified_patterns.clear();
     simple_ints.clear();
     simple_multiplicity.clear();
+    group_pattern_ints.clear();
+    group_pattern_text.clear();
+    pattern_to_number.clear();
     
     // fill pattern_ints with sequencial numbers, 
     // the numbers will refer patterns in the 'vector<string> patterns' 
@@ -148,13 +153,19 @@ void PatternsCodes::create_simplified_table()
     int unique_simple_count = -1; /* will be incremented */
     int pattern_simple_int;
     for(int i =0; i<patterns.size(); i++){
+       pattern_to_number[patterns[i]] = i;
        string simple_pattern = simplify_pattern(patterns[i]);
        auto seek_pattern = simplified_map.find(simple_pattern);
        if (seek_pattern == simplified_map.end() ){
           unique_simplified_patterns.push_back(simple_pattern);
           unique_simple_count++;
           pattern_simple_int = unique_simple_count;
+          // update map for futher search of the simple_pattern
           simplified_map[simple_pattern]=pattern_simple_int;
+          // Add pattern to the group of patterns
+          group_pattern_ints.push_back({});
+          group_pattern_text.push_back({});
+          // update multiplicity
           simple_multiplicity.push_back(1);
        }else{
           pattern_simple_int = simplified_map[simple_pattern];
@@ -162,8 +173,12 @@ void PatternsCodes::create_simplified_table()
        }
        simple_form.push_back(simple_pattern);
        simple_ints.push_back(pattern_simple_int);
+       group_pattern_ints[pattern_simple_int].push_back(i);
+       group_pattern_text[pattern_simple_int].push_back(patterns[i]);
     }
     n_simplified = unique_simplified_patterns.size();
+
+
 }
 
 
@@ -262,5 +277,42 @@ void PatternsCodes::count_pairwise_compatible(const vector <int> & patterns, vec
       count_pairwise_compatible(patterns, p1, n_compat[i], compat_flag_vec);
       i++;
    }
+}
+
+
+void PatternsCodes::calculate_group_ranks(){ 
+   group_rank.assign(n_simplified, 2); // will be set 1 later
+   vector<size_t> n_compat, n_diff_row, n_diff_col;
+   for(int g=0; g<n_simplified;g++){
+      // cout<<"Group "<<unique_simplified_patterns[g]<<" ";
+      count_pairwise_compatible(group_pattern_ints[g], n_compat);
+      count_different_codes_in_vector(group_pattern_ints[g], n_diff_row, n_diff_col);
+      int max_n_compat = n_patterns + 1;
+      int max_n_diff_row = n_patterns + 1;
+      int max_n_diff_col = n_patterns + 1;
+      for(int p=0; p<group_pattern_ints[g].size(); p++){
+         if(n_compat[p]   < max_n_compat)   max_n_compat    = n_compat[p];
+         if(n_diff_row[p] < max_n_diff_row) max_n_diff_row  = n_diff_row[p];
+         if(n_diff_col[p] < max_n_diff_col) max_n_diff_col  = n_diff_col[p];
+      };
+      // cout<<" n_compat ="<<min_n_compat<<" n_diff_row= "<<min_n_diff_row<<" n_diff_col="<<min_n_diff_col<<endl;
+      if( max_n_compat <= 1 or max_n_diff_row <= 1 or max_n_diff_col <= 1){
+         group_rank[g] = 1;
+      }
+   }
+   pattern_rank.resize(n_patterns);
+   for(int p=0; p<n_patterns; p++){
+      pattern_rank[p] =  group_rank[simple_ints[p]];
+   }
+}
+
+
+int PatternsCodes::patterns_capacity_rank_correction(vector <int> & pints, int start_point){
+   int capacity = 0;
+   valarray<bool> group_flag(n_simplified, false);
+   for(int i = start_point; i< pints.size() ; i++){
+      capacity++;
+   }
+   return capacity;
 }
 
