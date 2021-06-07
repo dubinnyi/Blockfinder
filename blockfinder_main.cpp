@@ -192,10 +192,10 @@ int main(int argc, char *argv[]) {
    SchemeTest scheme_tester(initial_blocks);
    if(blocks_flag){
       blockfinder.scheme_tester = & scheme_tester; 
-      cout<<"Self-test of the initial blocks:"<<endl;
+      //cout<<"Self-test of the initial blocks:"<<endl;
       for(auto scheme : initial_blocks){
          bool result = scheme_tester.check(scheme.simplified);
-         cout<<scheme.simplified_vector_string()<<" -- "<<(result?"True":"False")<<endl;
+         //cout<<scheme.simplified_vector_string()<<" -- "<<(result?"True":"False")<<endl;
       }
    }
 

@@ -112,6 +112,7 @@ Scheme::Scheme(PatternsCodes *patternscode, NCS *sncs, ifstream & in){
    boost::regex  sv_e(sv_re);
    boost::smatch what;
    int n_patterns = -1;
+   int read_pattern_lines = 0;
    patterns.clear();
    string line;
    int l = 0;
@@ -122,6 +123,7 @@ Scheme::Scheme(PatternsCodes *patternscode, NCS *sncs, ifstream & in){
       if(not elb_flag and boost::regex_match(line, what, elb_e)){
          samples = stoi(what["samples"]);
          n_patterns = stoi(what["patterns"]);
+         read_pattern_lines = 0;
          elb_flag = true;
          if(debug)cout<<"NEW BLOCK: samples = "<<samples<<" patterns = "<<n_patterns<<endl;
       }else if(elb_flag and not sv_flag and boost::regex_match(line, what, sv_e)){
@@ -131,11 +133,13 @@ Scheme::Scheme(PatternsCodes *patternscode, NCS *sncs, ifstream & in){
          string pattern = line;
          //if(debug) cout<<"LINE "<<l<<" = \'"<<line<<"\'"<<endl;
          auto seek_pattern = code_tab_ptr->pattern_to_number.find(pattern);
+         read_pattern_lines++;
          if ( seek_pattern == code_tab_ptr->pattern_to_number.end()){
              cerr<<"ERROR: wrong pattern: \'"<<pattern<<"\'"<<endl;
          }else{
              patterns.push_back(code_tab_ptr->pattern_to_number[pattern]);
-             patterns_flag = ( patterns.size() == n_patterns );
+//             patterns_flag = ( patterns.size() == n_patterns );
+             patterns_flag = ( read_pattern_lines == n_patterns );
              if(debug)  cout<<"PATTERN_INT= "<<code_tab_ptr->pattern_to_number[pattern]<<endl;
          }
       }
@@ -312,10 +316,10 @@ void read_blocks_from_file(PatternsCodes *patternscode, NCS *sncs, string file, 
                for (int int_simple : read_scheme.simplified) {
                   cout<<" "<<setw(2)<<int_simple;
                }
-            }else{
+               cout<<endl;
+            }else if (ischeme == 25){
                cout<<" .... "<<endl;
             }
-            cout<<endl;
             ischeme++;
             //cout<eread_scheme.full_str();
          }

@@ -5,20 +5,28 @@ import re
 import math
 import os, sys, stat
 
-task_re= re.compile('Task(?P<task>\d+) +start= +(?P<start>(\d+ +)+) +end= +(?P<end>(\d+ +)+)')
+task_new_re= re.compile('Task(?P<task>\d+) +start= +(?P<start>(\d+ +)+) +end= +(?P<end>(\d+ +)+)')
+task_old_re= re.compile(' *(?P<start>(\d+ +)+) +: +(?P<end>(\d+ +)+)')
 
 def scan_tasks(taskfile):
    num_tasks = 0
    tasks = []
    with open(taskfile, "r") as task:
       for i, line in enumerate(task):
-         tm= task_re.match(line)
-         if tm:
-            task= {'task' : tm.group('task'), 'start': tm.group('start'), 'end': tm.group('end'), 'line': line.strip() } 
+         tm_new = task_new_re.match(line)
+         tm_old = task_old_re.match(line)
+         if tm_new:
+            tm = tm_new
+            task_id = tm.group('task')
+         elif tm_old:
+            tm = tm_old
+            task_id = num_tasks
          else:
             str= "Error in taskfile {}, line {}:\n{}".format(taskfile, i, line)
             print(str, file=sys.stderr)
             task = {}
+            continue
+         task= {'task' : task_id, 'start': tm.group('start'), 'end': tm.group('end'), 'line': line.strip() } 
          num_tasks+= 1
          tasks.append(task)
    return(tasks)
@@ -56,7 +64,9 @@ def scan_log(args, tasks):
         for line in log:
            log_lines += 1
            log_lines_in_all_files += 1
-           task_run_match = task_run_re.match(line)
+           task_run_match = task_run_re1.match(line)
+           if not task_run_match:
+              task_run_match = task_run_re2.match(line)
            if task_run_match:
               task_num   =  int(task_run_match.group('task'))
               task_iter  =  int(task_run_match.group('iter'))*1000000

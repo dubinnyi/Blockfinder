@@ -91,7 +91,7 @@ void  find_schemes(int id, BlockFinder & b, Task4run & task_for_run) {
 void BlockFinder::generate_initial_patterns(vector<string> &p_text){
    bool dry_table = dry_table_flag;
    bool sort_patterns = sort_patterns_flag;
-   bool debug = false;
+   bool debug = true;
 
    cout<<"generate initial patterns with options: dry_table = "<<dry_table<<", sort_patterns = "<<sort_patterns<<endl;
    patterns_text = p_text;
@@ -366,6 +366,7 @@ void BlockFinder::create_tasks() {
    int start_point;
    int patterns_left;
    int patterns_capacity_left; 
+   bool flag_init_blocks;
    bool flag_t_free;
 
    create_task_flag = true;
@@ -405,19 +406,21 @@ void BlockFinder::create_tasks() {
             continue;
         }
         if (patterns_left == 0) {
-            if (scheme.patterns.size() >= min_depth) {
-                save_result();
-            }
             go_back();
             continue;
         }
         get_next_patterns(*patterns_current_ptr, patterns_left, start_point, next_patterns);
 
+        flag_init_blocks = true;
+        if (scheme_tester) {
+           flag_init_blocks = test_scheme_and_next_patterns(scheme, next_patterns);
+        }
+
         flag_t_free = true;
         if (check_t_free) {
             flag_t_free = check_have_enought_t_free(scheme, next_patterns);
         }
-        if ( next_patterns.size() != 0 && flag_t_free){
+        if ( next_patterns.size() != 0 && flag_t_free && flag_init_blocks){
 
             if(depth == parallel_depth){
 
@@ -437,15 +440,12 @@ void BlockFinder::create_tasks() {
 
                 go_parallel();
             }
-            if(depth<parallel_depth){
+            if(depth < parallel_depth){
                 go_deeper(next_patterns);
             }
 
         }
         else {
-            if (scheme.patterns.size() >= min_depth) {
-                save_result();
-            }
             go_parallel();
         }
         check_max_depth();
