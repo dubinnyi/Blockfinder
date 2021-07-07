@@ -80,11 +80,13 @@ BlockFinder::BlockFinder(NCS &bncs, int bsamples, int bmin_depth, int bmin_t_fre
 }
 
 
-void  find_schemes(int id, BlockFinder & b, Task4run & task_for_run) {
+map <unsigned long long, set< Scheme_compact>> find_schemes(int id, BlockFinder & b, Task4run & task_for_run) {
 
    BlockFinder task_bf(b);
    task_bf.recover_from_counters(task_for_run);
    task_bf.maincycle(task_for_run);
+
+    return std::move(task_bf.result);
 }
 
 

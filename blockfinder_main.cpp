@@ -281,13 +281,47 @@ int main(int argc, char *argv[]) {
 
    cout_locker Cout_Lock;
    blockfinder.cout_lock = & Cout_Lock;
-   for (Task4run task : run_tasks){
-      p.push(find_schemes, blockfinder, task);
-      numbertask=numbertask+1;
-   }
+
+
+    auto f1 = p.push(find_schemes, blockfinder, run_tasks[0]);
+
+    std::vector<decltype(f1)> result_vector;
+
+    for (int i = 1; i < run_tasks.size(); i++ ){
+        result_vector.push_back(p.push(find_schemes, blockfinder, run_tasks[i]));
+        numbertask=i;//numbertask+1;
+    }
+    
 
    // Wait for all jobs to finish
    p.stop(true);
+
+
+    std::set<Scheme_compact> schemes;
+    ofstream file;
+    std::string results_filename = name_ncs+ "_"+to_string(samples)+"_"+to_string(min_depth)+"_ALLcpp.elb";
+    file.open (results_filename);
+    file  << "[NCS = " << name_ncs << "]"<<endl<< "[Deuterated = " << (ncs.deuterated?"True":"False")<< "]"<<endl;
+    for(int i = 0; i< result_vector.size() ; i++){
+
+        for (auto results_scheme : result_vector[i].get()  )
+        {
+            for (auto scheme : results_scheme.second )
+            {
+                if ( schemes.insert(scheme).second )
+                {
+                    file <<  scheme.full_str()<<endl;
+                }
+            }
+            //(*result_ofstream) << new_scheme.full_str()<<endl;
+
+        }
+
+
+    }
+
+
+
    cout<<"EXECUTION OF ALL "<<to_string(numbertask)<<" TASKS FINISHED"<<endl;
    overall_timer.stop();
    

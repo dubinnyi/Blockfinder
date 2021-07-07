@@ -101,7 +101,7 @@ public:
 
 
 
-void find_schemes(int id,  BlockFinder & b, Task4run & task_for_run);
+map <unsigned long long, set< Scheme_compact>> find_schemes(int id, BlockFinder & b, Task4run & task_for_run);
 
 /*void find_schemes_long(int id,   int bsamples, NCS &bncs, int bmin_depth, int bmin_t_free, 
                     PatternsCodes &patternscode, vector <string> &patterns_text, 
